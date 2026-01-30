@@ -13,5 +13,14 @@
       "justMyCode": true,
       "cwd": "${workspaceFolder}/run/"
     },
+    {
+      "name": "Create Board",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/run/create_board.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "cwd": "${workspaceFolder}/run/"
+    },
   ]
 }

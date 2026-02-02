@@ -11,7 +11,10 @@
       "program": "${workspaceFolder}/run/main.py",
       "console": "integratedTerminal",
       "justMyCode": true,
-      "cwd": "${workspaceFolder}/run/"
+      "cwd": "${workspaceFolder}/run/",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      }
     },
     {
       "name": "Create Board",
@@ -19,8 +22,11 @@
       "request": "launch",
       "program": "${workspaceFolder}/run/create_board.py",
       "console": "integratedTerminal",
-      "justMyCode": true,
-      "cwd": "${workspaceFolder}/run/"
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}/run/",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      }
     },
   ]
 }

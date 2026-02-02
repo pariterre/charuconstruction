@@ -1,27 +1,78 @@
+import random
+
 import cv2
 
 
 class Charuco:
     def __init__(
-        self, vertical_squares_count: int, horizontal_squares_count: int, square_length: float, marker_length: float
+        self,
+        vertical_squares_count: int,
+        horizontal_squares_count: int,
+        square_len: float = 0.01,
+        marker_len: float = 0.005,
+        page_len: int = 1000,
+        page_margin: int = 20,
+        aruco_dict: int = cv2.aruco.DICT_7X7_1000,
+        seed: int = None,
     ):
         """
         Initialize a ChArUco board with the given parameters.
 
         Parameters:
-          vertical_squares_count (int): Number of squares in the vertical direction.
-          horizontal_squares_count (int): Number of squares in the horizontal direction.
-          square_length (float): Length of the squares in meters.
-          marker_length (float): Length of the ArUco markers in meters.
+            vertical_squares_count (int): Number of squares in the vertical direction.
+            horizontal_squares_count (int): Number of squares in the horizontal direction.
+            square_len (float): Length of the squares in meters.
+            marker_len (float): Length of the ArUco markers in meters.
+                page_len (int): Total length of the page in pixels when generating the board image.
+                page_margin (int): Margin size in pixels when generating the board image.
+            aruco_dict (int): Predefined ArUco dictionary to use.
+            seed (int): Seed for random number generator (will determine the order of aruco markers).
         """
 
-        # https://medium.com/@ed.twomey1/using-charuco-boards-in-opencv-237d8bc9e40d
-        self._vertical_squares = vertical_squares_count
-        self._horizontal_squares = horizontal_squares_count
-        self.square_length = square_length
-        self.marker_length = marker_length
-        self._aruco_dict = cv2.aruco.DICT_6X6_250
-        self.dictionary = cv2.aruco.getPredefinedDictionary(self.aruco_dict)
-        self.board = cv2.aruco.CharucoBoard(
-            (self.horizontal_squares, self.vertical_squares), self.square_length, self.marker_length, self.dictionary
+        self._vert_count = vertical_squares_count
+        self._horz_count = horizontal_squares_count
+        self._square_len = square_len
+        self._marker_len = marker_len
+        self._page_margin = page_margin
+        self._page_len = page_len
+
+        self._dictionary = cv2.aruco.getPredefinedDictionary(aruco_dict)
+
+        aruco_indices = list(range(0, vertical_squares_count * horizontal_squares_count))
+        rng = random.Random(seed)
+        rng.shuffle(aruco_indices)
+        self._dictionary.bytesList = self._dictionary.bytesList[aruco_indices]
+
+        self._board = cv2.aruco.CharucoBoard(
+            (self._vert_count, self._horz_count),
+            self._square_len,
+            self._marker_len,
+            self._dictionary,
         )
+        self._board_image = cv2.aruco.CharucoBoard.generateImage(
+            self._board,
+            (self._page_len, int(self._page_len * self.square_ratio)),
+            marginSize=self._page_margin,
+        )
+
+    @property
+    def squares_count(self) -> int:
+        return self._vert_count * self._horz_count
+
+    @property
+    def vertical_squares_count(self) -> int:
+        return self._vert_count
+
+    @property
+    def horizontal_squares_count(self) -> int:
+        return self._horz_count
+
+    @property
+    def square_ratio(self) -> float:
+        return self._horz_count / self._vert_count
+
+    def show(self, save_path: str = None):
+        cv2.imshow("img", self._board_image)
+        if save_path is not None:
+            cv2.imwrite(save_path, self._board_image)
+        cv2.waitKey()

@@ -8,10 +8,10 @@ class Charuco:
         self,
         vertical_squares_count: int,
         horizontal_squares_count: int,
-        square_len: float = 0.01,
-        marker_len: float = 0.005,
-        page_len: int = 1000,
-        page_margin: int = 20,
+        square_len: float,
+        marker_len: float,
+        page_len: int,
+        page_margin: int,
         aruco_dict: int = cv2.aruco.DICT_7X7_1000,
         seed: int = None,
     ):
@@ -22,9 +22,9 @@ class Charuco:
             vertical_squares_count (int): Number of squares in the vertical direction.
             horizontal_squares_count (int): Number of squares in the horizontal direction.
             square_len (float): Length of the squares in meters.
-            marker_len (float): Length of the ArUco markers in meters.
-                page_len (int): Total length of the page in pixels when generating the board image.
-                page_margin (int): Margin size in pixels when generating the board image.
+            marker_len (float): Length of the ArUco markers in meters (cannot be greater than square_len).
+            page_len (int): Total length of the page in pixels when generating the board image.
+            page_margin (int): Margin size in pixels when generating the board image.
             aruco_dict (int): Predefined ArUco dictionary to use.
             seed (int): Seed for random number generator (will determine the order of aruco markers).
         """
@@ -75,4 +75,6 @@ class Charuco:
         cv2.imshow("img", self._board_image)
         if save_path is not None:
             cv2.imwrite(save_path, self._board_image)
-        cv2.waitKey()
+            cv2.waitKey(2000)
+        else:
+            cv2.waitKey()

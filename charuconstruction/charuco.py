@@ -1,6 +1,9 @@
 import random
 
 import cv2
+import numpy as np
+
+from .media_reader import Frame
 
 
 class Charuco:
@@ -71,6 +74,10 @@ class Charuco:
     def square_ratio(self) -> float:
         return self._horz_count / self._vert_count
 
+    @property
+    def aruco_ids(self) -> list[int]:
+        return self._board.getIds().flatten().tolist()
+
     def show(self, save_path: str = None):
         cv2.imshow("img", self._board_image)
         if save_path is not None:
@@ -78,3 +85,141 @@ class Charuco:
             cv2.waitKey(2000)
         else:
             cv2.waitKey()
+
+    def detect(self, frame: Frame) -> Frame:
+        """
+        Detect markers and ChArUco corners in the given image.
+
+        Parameters:
+            frame (Frame): Frame to detect markers and corners from.
+        Returns:
+            Frame: Updated frame with detected markers and corners drawn.
+        """
+        grayscale_frame = frame.get(grayscale=True)
+        output_frame = frame.get().copy()
+
+        result = _detect_marker_corners(grayscale_frame, self)
+        if result is None:
+            return frame
+        corners, ids, charuco_corners, charuco_ids = result
+
+        # Draw the detected markers and corners of the corresponding Charuco board
+        cv2.aruco.drawDetectedMarkers(output_frame, corners, ids)
+        _draw_detected_corners_charuco_own(output_frame, charuco_corners, charuco_ids)
+
+        # Show the axes of reference
+
+        # Default values
+        h, w = output_frame.shape[:2]
+        f = w  # focal length ~ image width in pixels
+        camera_matrix = np.array([[f, 0, w / 2], [0, f, h / 2], [0, 0, 1]], dtype=float)
+        dist_coeffs = np.zeros(5)
+        rvec = np.zeros((3, 1), dtype=np.float32)
+        tvec = np.zeros((3, 1), dtype=np.float32)
+
+        ret, rvec, tvec = cv2.aruco.estimatePoseCharucoBoard(
+            charuco_corners, charuco_ids, self._board, camera_matrix, dist_coeffs, rvec, tvec
+        )
+        if ret > 0:
+            axis_length = 0.05  # Length of axes in your units (e.g., meters)
+            cv2.drawFrameAxes(output_frame, camera_matrix, dist_coeffs, rvec, tvec, axis_length)
+
+        return Frame(output_frame)
+
+
+def _detect_marker_corners(
+    frame: np.ndarray, charuco: Charuco
+) -> tuple[list[np.ndarray], np.ndarray, np.ndarray, np.ndarray] | None:
+    corners, ids = _detect_markers(frame, charuco)
+    if not corners or ids is None:
+        return None
+
+    # Read chessboard corners between markers
+    corner_counts, charuco_corners, charuco_ids = cv2.aruco.interpolateCornersCharuco(
+        corners, ids, frame, charuco._board
+    )
+    if corner_counts == 0:
+        return None
+
+    return corners, ids, charuco_corners, charuco_ids
+
+
+def _detect_markers(frame: np.ndarray, charuco: Charuco) -> tuple[list[np.ndarray], np.ndarray | None]:
+    corners, ids, _ = cv2.aruco.detectMarkers(frame, charuco._dictionary)
+    if not corners or ids is None:
+        return [], None
+
+    # Filter out the markers to only include those that belong to the current Charuco board
+    # Strategy :
+    #   1 - Remove all the markers which are not in the current board
+    #   2 - Keep only unique markers IDs and compute the mid point of that reduced board
+    #   3 - Reinsert all the markers which appear multiple times (other boards on screen) and
+    #       remove them based on nearest distance to the mid-board position
+    aruco_ids = charuco.aruco_ids
+    corners_tp = []
+    ids_tp = []
+    for corner, id in zip(corners, ids):
+        if id in aruco_ids:
+            corners_tp.append(corner)
+            ids_tp.append(id)
+    ids = np.array(ids_tp)
+    corners = corners_tp
+
+    non_unique_ids: list[int] = ids[:, 0].tolist()
+    unique_ids: set[int] = set(ids[:, 0].tolist())
+    ids_tp = []
+    corners_tp = []
+    for id in unique_ids:
+        if non_unique_ids.count(id) == 1:
+            index = non_unique_ids.index(id)
+            ids_tp.append(ids[index])
+            corners_tp.append(corners[index])
+    mid_point = np.mean([np.mean(corner[:, 0, :], axis=0) for corner in corners_tp], axis=0)
+
+    for id in unique_ids:
+        if non_unique_ids.count(id) == 1:
+            # Already processed
+            continue
+
+        min_distance = float("inf")
+        best_so_far = -1
+        all_indices = [i for i, cid in enumerate(ids) if cid[0] == id]
+        for i in all_indices:
+            corner_center = np.mean(corners[i].squeeze(), axis=0)
+            distance = np.linalg.norm(corner_center - mid_point)
+            if distance < min_distance:
+                min_distance = distance
+                best_so_far = i
+        ids_tp.append(ids[best_so_far])
+        corners_tp.append(corners[best_so_far])
+    ids = np.array(ids_tp)
+    corners = corners_tp
+
+    return corners, ids
+
+
+def _draw_detected_corners_charuco_own(img, corners, ids):
+    """
+    Draw rectangles and IDs to the corners
+    """
+
+    rect_size = 5
+    id_font = cv2.FONT_HERSHEY_SIMPLEX
+    id_scale = 0.5
+    id_color = (255, 255, 0)
+    rect_thickness = 1
+
+    # Draw rectangels and IDs
+    for corner, id in zip(corners, ids):
+        corner_x = int(corner[0][0])
+        corner_y = int(corner[0][1])
+        id_text = "Id: {}".format(str(id[0]))
+        id_coord = (corner_x + 2 * rect_size, corner_y + 2 * rect_size)
+        cv2.rectangle(
+            img,
+            (corner_x - rect_size, corner_y - rect_size),
+            (corner_x + rect_size, corner_y + rect_size),
+            id_color,
+            thickness=rect_thickness,
+        )
+        cv2.putText(img, id_text, id_coord, id_font, id_scale, id_color)

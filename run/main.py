@@ -1,13 +1,13 @@
 import os
-import json
+from pathlib import Path
 
 from charuconstruction import Charuco, ImageReader, Frame
 
 
 def main():
     charuco_boards: list[Charuco] = []
-    for param in json.loads(os.environ["CHARUCO_PARAMETERS"]):
-        charuco_boards.append(Charuco(**param))
+    for folder_name in os.environ["CHARUCOS"].split(","):
+        charuco_boards.append(Charuco.load(Path(folder_name)))
 
     # Detect markers for each Charuco board at each frame
     reader = ImageReader(image_path="./charuco_frame.png")

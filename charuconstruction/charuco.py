@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 import random
 
 import cv2
@@ -39,9 +41,11 @@ class Charuco:
         self._page_margin = page_margin
         self._page_len = page_len
 
-        self._dictionary = cv2.aruco.getPredefinedDictionary(aruco_dict)
+        self._predefined_aruco_dict = aruco_dict
+        self._dictionary = cv2.aruco.getPredefinedDictionary(self._predefined_aruco_dict)
 
         aruco_indices = list(range(0, vertical_squares_count * horizontal_squares_count))
+        self._random_seed = seed
         rng = random.Random(seed)
         rng.shuffle(aruco_indices)
         self._dictionary.bytesList = self._dictionary.bytesList[aruco_indices]
@@ -78,13 +82,37 @@ class Charuco:
     def aruco_ids(self) -> list[int]:
         return self._board.getIds().flatten().tolist()
 
-    def show(self, save_path: str = None):
+    @property
+    def random_seed(self) -> int | None:
+        return self._random_seed
+
+    def show(self) -> None:
         cv2.imshow("img", self._board_image)
-        if save_path is not None:
-            cv2.imwrite(save_path, self._board_image)
-            cv2.waitKey(2000)
-        else:
-            cv2.waitKey()
+        cv2.waitKey()
+
+    @classmethod
+    def load(cls, load_folder: Path) -> "Charuco":
+        param_path = load_folder / "board.json"
+        params = json.load(open(param_path, "r"))
+        return cls(**params)
+
+    def save(self, save_folder: Path, override: bool = False) -> None:
+        save_folder.mkdir(parents=True, exist_ok=False)
+
+        json.dump(self.serialize(), open(save_folder / "board.json", "w"), indent=2)
+        cv2.imwrite(save_folder / "board.png", self._board_image)
+
+    def serialize(self) -> dict:
+        return {
+            "vertical_squares_count": self._vert_count,
+            "horizontal_squares_count": self._horz_count,
+            "square_len": self._square_len,
+            "marker_len": self._marker_len,
+            "page_len": self._page_len,
+            "page_margin": self._page_margin,
+            "aruco_dict": self._predefined_aruco_dict,
+            "seed": self._random_seed,
+        }
 
     def detect(self, frame: Frame) -> Frame:
         """

@@ -5,6 +5,8 @@ import random
 import cv2
 import numpy as np
 
+
+from .camera import Camera
 from .media_reader import Frame
 
 
@@ -18,6 +20,7 @@ class Charuco:
         page_len: int,
         page_margin: int,
         aruco_dict: int = cv2.aruco.DICT_7X7_1000,
+        camera: Camera = Camera.default(),
         seed: int = None,
     ):
         """
@@ -40,6 +43,7 @@ class Charuco:
         self._marker_len = marker_len
         self._page_margin = page_margin
         self._page_len = page_len
+        self._camera = camera
 
         self._predefined_aruco_dict = aruco_dict
         self._dictionary = cv2.aruco.getPredefinedDictionary(self._predefined_aruco_dict)
@@ -90,18 +94,30 @@ class Charuco:
     def cv2_board_image(self) -> np.ndarray:
         return self._board_image
 
+    @property
+    def camera(self) -> Camera:
+        return self._camera
+
+    @camera.setter
+    def camera(self, camera: Camera) -> None:
+        self._camera = camera
+
     def show(self) -> None:
         cv2.imshow("img", self._board_image)
         cv2.waitKey()
 
     @classmethod
-    def load(cls, load_folder: Path) -> "Charuco":
+    def load(cls, load_folder: Path, camera: Camera | None = None) -> "Charuco":
         param_path = load_folder / "board.json"
         params = json.load(open(param_path, "r"))
+        if camera is not None:
+            params["camera"] = camera
         return cls(**params)
 
     def save(self, save_folder: Path, override: bool = False) -> None:
-        save_folder.mkdir(parents=True, exist_ok=False)
+        if not override and save_folder.exists():
+            raise FileExistsError(f"The folder {save_folder} already exists. Use override=True to overwrite.")
+        save_folder.mkdir(parents=True, exist_ok=True)
 
         json.dump(self.serialize(), open(save_folder / "board.json", "w"), indent=2)
         cv2.imwrite(save_folder / "board.png", self._board_image)
@@ -118,21 +134,26 @@ class Charuco:
             "seed": self._random_seed,
         }
 
-    def detect(self, frame: Frame) -> Frame:
+    def detect(
+        self,
+        frame: Frame,
+        initial_guess: tuple[np.ndarray, np.ndarray] = None,
+    ) -> tuple[Frame, tuple[np.ndarray, np.ndarray]]:
         """
         Detect markers and ChArUco corners in the given image.
 
         Parameters:
             frame (Frame): Frame to detect markers and corners from.
+            initial_guess (tuple[np.ndarray, np.ndarray]): Initial guess for rotation and translation vectors.
         Returns:
-            Frame: Updated frame with detected markers and corners drawn.
+            tuple[Frame, tuple[np.ndarray, np.ndarray]]: Updated frame with detected markers and corners drawn, rotation vector, and translation vector.
         """
         grayscale_frame = frame.get(grayscale=True)
         output_frame = frame.get().copy()
 
         result = _detect_marker_corners(grayscale_frame, self)
         if result is None:
-            return frame
+            return frame, (None, None)
         corners, ids, charuco_corners, charuco_ids = result
 
         # Draw the detected markers and corners of the corresponding Charuco board
@@ -140,23 +161,31 @@ class Charuco:
         _draw_detected_corners_charuco_own(output_frame, charuco_corners, charuco_ids)
 
         # Show the axes of reference
-
         # Default values
-        height, width = output_frame.shape[:2]
-        focal_length = width  # focal length ~ image width in pixels
-        camera_matrix = np.array([[focal_length, 0, width / 2], [0, focal_length, height / 2], [0, 0, 1]], dtype=float)
-        dist_coeffs = np.zeros(5)
-        rvec = np.zeros((3, 1), dtype=np.float32)
-        tvec = np.zeros((3, 1), dtype=np.float32)
+        axis_length = 0.01  # Length of axes in meters
+        rotation_initial_guess, translation_initial_guess = (
+            (np.zeros((3, 1)), np.zeros((3, 1))) if initial_guess is None else initial_guess
+        )
 
-        ret, rvec, tvec = cv2.aruco.estimatePoseCharucoBoard(
-            charuco_corners, charuco_ids, self._board, camera_matrix, dist_coeffs, rvec, tvec
+        ret, rotation, translation = cv2.aruco.estimatePoseCharucoBoard(
+            charuco_corners,
+            charuco_ids,
+            self._board,
+            self._camera.matrix,
+            self._camera.distorsion_coefficients,
+            rotation_initial_guess,
+            translation_initial_guess,
         )
         if ret > 0:
-            axis_length = 0.05  # Length of axes in your units (e.g., meters)
-            cv2.drawFrameAxes(output_frame, camera_matrix, dist_coeffs, rvec, tvec, axis_length)
-
-        return Frame(output_frame)
+            cv2.drawFrameAxes(
+                output_frame,
+                self._camera.matrix,
+                self._camera.distorsion_coefficients,
+                rotation,
+                translation,
+                axis_length,
+            )
+        return Frame(output_frame), (rotation, translation)
 
 
 def _detect_marker_corners(

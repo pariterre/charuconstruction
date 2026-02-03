@@ -4,6 +4,7 @@ from typing import Iterable, TYPE_CHECKING
 import cv2
 import numpy as np
 
+from .camera import Camera
 from .frame import Frame
 
 if TYPE_CHECKING:
@@ -72,12 +73,24 @@ class VideoReader(MediaReader):
 
 
 class CharucoMockReader(MediaReader):
-    def __init__(self, board1: Charuco, board2: Charuco, angles: Iterable[float] = (0,)):
-        self._board1 = board1
-        self._board2 = board2
+    def __init__(
+        self, boards: Iterable[Charuco], angles: Iterable[Iterable[float]] = None, camera: Camera = Camera.default()
+    ):
+        self._boards = boards
+        if angles is None:
+            angles = [(0.0,) for _ in boards]
 
-        self._current_angle_index = 0
+        # Sanity checks for angles
+        if len(angles) != len(self._boards):
+            raise ValueError("Number of angle sequences must match number of boards.")
+        for i in range(len(boards)):
+            if len(angles[i]) != len(angles[0]):
+                raise ValueError("All angle sequences must have the same length.")
         self._angles = angles
+        self._frame_count = len(angles[0])
+
+        self._camera = camera
+        self._current_angle_index = 0
 
         super().__init__()
 
@@ -89,65 +102,69 @@ class CharucoMockReader(MediaReader):
         return self
 
     def _read_frame(self):
-        if self._current_angle_index >= len(self._angles):
+        if self._current_angle_index >= self._frame_count:
             return None
-        angle = self._angles[self._current_angle_index]
+
+        # Move the image further away and rotate the boards and get their images
+        cv2_imgs: list[np.ndarray] = []
+        for board, angles in zip(self._boards, self._angles):
+            angle = angles[self._current_angle_index]
+            img = self._move_image(board.cv2_board_image, distance=10, angle_deg=angle)
+            cv2_imgs.append(cv2.cvtColor(src=img, code=cv2.COLOR_GRAY2BGR))
         self._current_angle_index += 1
 
-        # Create a composite image from two charuco boards, one still next to a rotating one
-        board1_img = self._board1.cv2_board_image
-        board2_img = CharucoMockReader._rotate_about_y_axis(img=self._board2.cv2_board_image, angle_deg=angle * 3)
+        # Create a composite image
+        padded_imgs: list[np.ndarray] = []
+        max_img_height = max(cv2_imgs, key=lambda im: im.shape[0]).shape[0]
+        for img in cv2_imgs:
+            padded_imgs.append(self._pad_center_vertical(img=img, target_height=max_img_height))
+        combined = np.hstack(padded_imgs)
 
-        board1_img: np.ndarray = cv2.cvtColor(src=board1_img, code=cv2.COLOR_GRAY2BGR)
-        board2_img: np.ndarray = cv2.cvtColor(src=board2_img, code=cv2.COLOR_GRAY2BGR)
-        height = max(board1_img.shape[0], board2_img.shape[0])
-
-        left = CharucoMockReader._pad_center_vertical(img=board1_img, target_height=height)
-        right = CharucoMockReader._pad_center_vertical(img=board2_img, target_height=height)
-        combined = np.hstack([left, right])
-
+        # Encode and decode to get a proper Frame object
         success, buf = cv2.imencode(".png", combined)
         if not success:
             return None
         return Frame(cv2.imdecode(buf, cv2.IMREAD_COLOR))
 
-    @staticmethod
-    def _rotate_about_y_axis(
-        img: np.ndarray, angle_deg: float, focal_length: int = 1000, background_color: int = 255
+    def _move_image(
+        self, img: np.ndarray, distance: float, angle_deg: float, background_color: int = 255
     ) -> np.ndarray:
-        height, width = img.shape[:2]
         angle = np.deg2rad(angle_deg)
+        scale = self._camera.focal_length / (self._camera.focal_length + distance)
 
-        cx, cy = width / 2, height / 2
-        K = np.array([[focal_length, 0, cx], [0, focal_length, cy], [0, 0, 1]])
-        R = np.array([[np.cos(angle), 0, np.sin(angle)], [0, 1, 0], [-np.sin(angle), 0, np.cos(angle)]])
-        H = K @ R @ np.linalg.inv(K)
+        rotation_matrix = np.array([[np.cos(angle), 0, np.sin(angle)], [0, 1, 0], [-np.sin(angle), 0, np.cos(angle)]])
+        translation_matrix = np.array(
+            [[scale, 0, 0], [0, scale, 0], [0, 0, 1]],
+            dtype=np.float32,
+        )
+        transformation_matrix = (
+            self._camera.matrix @ (translation_matrix @ rotation_matrix) @ np.linalg.inv(self._camera.matrix)
+        )
 
         # Project original image corners
+        height, width = img.shape[:2]
         corners = np.array([[0, 0], [width, 0], [width, height], [0, height]], dtype=np.float32)
-        corners_h: np.ndarray = cv2.perspectiveTransform(corners[None, :, :], H)[0]
+        transformed_corners: np.ndarray = cv2.perspectiveTransform(corners[None, :, :], transformation_matrix)[0]
 
-        min_x, min_y = corners_h.min(axis=0)
-        max_x, max_y = corners_h.max(axis=0)
-
+        min_x, min_y = transformed_corners.min(axis=0)
+        max_x, max_y = transformed_corners.max(axis=0)
         new_width = int(np.ceil(max_x - min_x))
         new_height = int(np.ceil(max_y - min_y))
 
         # Translation to keep image fully visible
-        T = np.array([[1, 0, -min_x], [0, 1, -min_y], [0, 0, 1]])
-        H_total = T @ H
-        warped = cv2.warpPerspective(
-            img, H_total, (new_width, new_height), flags=cv2.INTER_LINEAR, borderValue=background_color
+        translation = np.array([[1, 0, -min_x], [0, 1, -min_y], [0, 0, 1]])
+        transformation_total = translation @ transformation_matrix
+        return cv2.warpPerspective(
+            img, transformation_total, (new_width, new_height), flags=cv2.INTER_LINEAR, borderValue=background_color
         )
-        return warped
 
     @staticmethod
     def _pad_center_vertical(
-        img: np.ndarray, target_height: float, bg: tuple[int, int, int] = (255, 255, 255)
+        img: np.ndarray, target_height: float, background_color: tuple[int, int, int] = (255, 255, 255)
     ) -> np.ndarray:
         height, _ = img.shape[:2]
         if height >= target_height:
             return img
         top = (target_height - height) // 2
         bottom = target_height - height - top
-        return cv2.copyMakeBorder(img, top, bottom, 0, 0, cv2.BORDER_CONSTANT, value=bg)
+        return cv2.copyMakeBorder(img, top, bottom, 0, 0, cv2.BORDER_CONSTANT, value=background_color)

@@ -15,6 +15,7 @@
       "env": {
         "PYTHONPATH": "${workspaceFolder}",
         "CHARUCOS": "charuco_7x5_24,charuco_7x5_42",
+        //"CHARUCOS": "charuco_7x5_42",
       }
     },
     {

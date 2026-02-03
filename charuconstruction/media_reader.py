@@ -1,7 +1,13 @@
 from abc import ABC, abstractmethod
+from typing import Iterable, TYPE_CHECKING
 
 import cv2
 import numpy as np
+
+from .frame import Frame
+
+if TYPE_CHECKING:
+    from .charuco import Charuco
 
 
 class MediaReader(ABC):
@@ -65,43 +71,83 @@ class VideoReader(MediaReader):
         return Frame(frame)
 
 
-class Frame:
-    def __init__(self, frame: np.ndarray):
-        self._frame = frame
-        self._grayscale_frame = self._ensure_grayscale()
+class CharucoMockReader(MediaReader):
+    def __init__(self, board1: Charuco, board2: Charuco, angles: Iterable[float] = (0,)):
+        self._board1 = board1
+        self._board2 = board2
 
-    def get(self, grayscale: bool = False) -> np.ndarray:
-        if grayscale:
-            return self._grayscale_frame
-        return self._frame
+        self._current_angle_index = 0
+        self._angles = angles
 
-    def show(self, max_width=1280, max_height=720, grayscale: bool = False):
-        to_show = self._grayscale_frame if grayscale else self._frame
+        super().__init__()
 
-        h, w = to_show.shape[:2]
+    def destroy(self):
+        pass
 
-        # Compute scaling factor to fit max size
-        scale_w = max_width / w
-        scale_h = max_height / h
-        scale = min(scale_w, scale_h, 1.0)  # never upscale
+    def __iter__(self) -> "CharucoMockReader":
+        self._current_angle_index = 0
+        return self
 
-        if scale < 1.0:
-            new_w = int(w * scale)
-            new_h = int(h * scale)
-            resized = cv2.resize(to_show, (new_w, new_h))
-        else:
-            resized = to_show
+    def _read_frame(self):
+        if self._current_angle_index >= len(self._angles):
+            return None
+        angle = self._angles[self._current_angle_index]
+        self._current_angle_index += 1
 
-        cv2.imshow("frame", resized)
-        cv2.waitKey()
-        if cv2.getWindowProperty("frame", cv2.WND_PROP_VISIBLE) < 1:
-            return
-        cv2.destroyWindow("frame")
+        # Create a composite image from two charuco boards, one still next to a rotating one
+        board1_img = self._board1.cv2_board_image
+        board2_img = CharucoMockReader._rotate_about_y_axis(img=self._board2.cv2_board_image, angle_deg=angle * 3)
 
-    def _ensure_grayscale(self) -> np.ndarray:
-        if len(self._frame.shape) == 2:
-            return self._frame
-        elif len(self._frame.shape) == 3:
-            return cv2.cvtColor(self._frame, cv2.COLOR_BGR2GRAY)
-        else:
-            raise ValueError("Invalid image shape")
+        board1_img: np.ndarray = cv2.cvtColor(src=board1_img, code=cv2.COLOR_GRAY2BGR)
+        board2_img: np.ndarray = cv2.cvtColor(src=board2_img, code=cv2.COLOR_GRAY2BGR)
+        height = max(board1_img.shape[0], board2_img.shape[0])
+
+        left = CharucoMockReader._pad_center_vertical(img=board1_img, target_height=height)
+        right = CharucoMockReader._pad_center_vertical(img=board2_img, target_height=height)
+        combined = np.hstack([left, right])
+
+        success, buf = cv2.imencode(".png", combined)
+        if not success:
+            return None
+        return Frame(cv2.imdecode(buf, cv2.IMREAD_COLOR))
+
+    @staticmethod
+    def _rotate_about_y_axis(
+        img: np.ndarray, angle_deg: float, focal_length: int = 1000, background_color: int = 255
+    ) -> np.ndarray:
+        height, width = img.shape[:2]
+        angle = np.deg2rad(angle_deg)
+
+        cx, cy = width / 2, height / 2
+        K = np.array([[focal_length, 0, cx], [0, focal_length, cy], [0, 0, 1]])
+        R = np.array([[np.cos(angle), 0, np.sin(angle)], [0, 1, 0], [-np.sin(angle), 0, np.cos(angle)]])
+        H = K @ R @ np.linalg.inv(K)
+
+        # Project original image corners
+        corners = np.array([[0, 0], [width, 0], [width, height], [0, height]], dtype=np.float32)
+        corners_h: np.ndarray = cv2.perspectiveTransform(corners[None, :, :], H)[0]
+
+        min_x, min_y = corners_h.min(axis=0)
+        max_x, max_y = corners_h.max(axis=0)
+
+        new_width = int(np.ceil(max_x - min_x))
+        new_height = int(np.ceil(max_y - min_y))
+
+        # Translation to keep image fully visible
+        T = np.array([[1, 0, -min_x], [0, 1, -min_y], [0, 0, 1]])
+        H_total = T @ H
+        warped = cv2.warpPerspective(
+            img, H_total, (new_width, new_height), flags=cv2.INTER_LINEAR, borderValue=background_color
+        )
+        return warped
+
+    @staticmethod
+    def _pad_center_vertical(
+        img: np.ndarray, target_height: float, bg: tuple[int, int, int] = (255, 255, 255)
+    ) -> np.ndarray:
+        height, _ = img.shape[:2]
+        if height >= target_height:
+            return img
+        top = (target_height - height) // 2
+        bottom = target_height - height - top
+        return cv2.copyMakeBorder(img, top, bottom, 0, 0, cv2.BORDER_CONSTANT, value=bg)

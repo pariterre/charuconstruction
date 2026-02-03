@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from charuconstruction import Charuco, ImageReader, Frame
+from charuconstruction import Charuco, CharucoMockReader, Frame
 
 
 def main():
@@ -10,12 +10,15 @@ def main():
         charuco_boards.append(Charuco.load(Path(folder_name)))
 
     # Detect markers for each Charuco board at each frame
-    reader = ImageReader(image_path="./charuco_frame.png")
+    reader = CharucoMockReader(board1=charuco_boards[0], board2=charuco_boards[1], angles=range(0, 15, 1))
     for frame in reader:
         frame_to_draw = Frame(frame.get())
         for charuco in charuco_boards:
             frame_to_draw = charuco.detect(frame_to_draw)
-        frame_to_draw.show()
+
+        should_continue = frame_to_draw.show()
+        if not should_continue:
+            break
 
     reader.destroy()
 

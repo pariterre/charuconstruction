@@ -56,7 +56,7 @@ class Charuco:
             self._marker_len,
             self._dictionary,
         )
-        self._board_image = cv2.aruco.CharucoBoard.generateImage(
+        self._board_image: np.ndarray = cv2.aruco.CharucoBoard.generateImage(
             self._board,
             (self._page_len, int(self._page_len * self.square_ratio)),
             marginSize=self._page_margin,
@@ -85,6 +85,10 @@ class Charuco:
     @property
     def random_seed(self) -> int | None:
         return self._random_seed
+
+    @property
+    def cv2_board_image(self) -> np.ndarray:
+        return self._board_image
 
     def show(self) -> None:
         cv2.imshow("img", self._board_image)
@@ -138,9 +142,9 @@ class Charuco:
         # Show the axes of reference
 
         # Default values
-        h, w = output_frame.shape[:2]
-        f = w  # focal length ~ image width in pixels
-        camera_matrix = np.array([[f, 0, w / 2], [0, f, h / 2], [0, 0, 1]], dtype=float)
+        height, width = output_frame.shape[:2]
+        focal_length = width  # focal length ~ image width in pixels
+        camera_matrix = np.array([[focal_length, 0, width / 2], [0, focal_length, height / 2], [0, 0, 1]], dtype=float)
         dist_coeffs = np.zeros(5)
         rvec = np.zeros((3, 1), dtype=np.float32)
         tvec = np.zeros((3, 1), dtype=np.float32)

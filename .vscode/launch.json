@@ -14,7 +14,7 @@
       "cwd": "${workspaceFolder}/run/",
       "env": {
         "PYTHONPATH": "${workspaceFolder}",
-        "CHARUCO_PARAMETERS": "[{\"vertical_squares_count\":7,\"horizontal_squares_count\":5,\"square_len\":0.03,\"marker_len\":0.02,\"page_len\":1000,\"page_margin\":20,\"seed\":42},{\"vertical_squares_count\":7,\"horizontal_squares_count\":5,\"square_len\":0.03,\"marker_len\":0.02,\"page_len\":1000,\"page_margin\":20,\"seed\":24}]",
+        "CHARUCO_PARAMETERS": "[{\"vertical_squares_count\":5,\"horizontal_squares_count\":7,\"square_len\":0.2,\"marker_len\":0.1,\"page_len\":2159,\"page_margin\":10,\"seed\":42},{\"vertical_squares_count\":5,\"horizontal_squares_count\":7,\"square_len\":0.2,\"marker_len\":0.1,\"page_len\":2159,\"page_margin\":10,\"seed\":24}]",
       }
     },
     {
@@ -27,8 +27,8 @@
       "cwd": "${workspaceFolder}/run/",
       "env": {
         "PYTHONPATH": "${workspaceFolder}",
-        "CHARUCOS": "charuco_7x5_24,charuco_7x5_42",
-        //"CHARUCOS": "charuco_7x5_42",
+        "CHARUCOS": "charuco_5x7_24,charuco_5x7_42",
+        //"CHARUCOS": "charuco_5x7_42",
       }
     },
   ]

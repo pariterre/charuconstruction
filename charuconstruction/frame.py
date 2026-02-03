@@ -58,8 +58,10 @@ class Frame:
         cv2.waitKey(wait_time)
 
         try:
-            cv2.getWindowProperty("frame", cv2.WND_PROP_VISIBLE) < 1
-            return True
+            should_continue = (
+                cv2.getWindowProperty("frame", cv2.WND_PROP_VISIBLE) >= 1
+            )
+            return should_continue
 
         except cv2.error:
             # Window was closed

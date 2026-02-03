@@ -2,6 +2,7 @@ from .version import __version__
 from .camera import Camera
 from .charuco import Charuco
 from .frame import Frame
+from .math import TranslationVector, RotationMatrix, Transformation, Vector3
 from .media_reader import ImageReader, VideoReader, CharucoMockReader
 
 __all__ = [
@@ -12,4 +13,8 @@ __all__ = [
     ImageReader.__name__,
     VideoReader.__name__,
     Frame.__name__,
+    TranslationVector.__name__,
+    RotationMatrix.__name__,
+    Transformation.__name__,
+    Vector3.__name__,
 ]

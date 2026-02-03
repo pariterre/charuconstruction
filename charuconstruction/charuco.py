@@ -49,7 +49,7 @@ class Charuco:
         )
 
         aruco_indices = list(
-            range(0, vertical_squares_count * horizontal_squares_count)
+            range(0, horizontal_squares_count * vertical_squares_count)
         )
         self._random_seed = seed
         rng = random.Random(seed)
@@ -57,7 +57,7 @@ class Charuco:
         self._dictionary.bytesList = self._dictionary.bytesList[aruco_indices]
 
         self._board = cv2.aruco.CharucoBoard(
-            (self._vert_count, self._horz_count),
+            (self._horz_count, self._vert_count),
             self._square_len,
             self._marker_len,
             self._dictionary,
@@ -70,45 +70,97 @@ class Charuco:
 
     @property
     def squares_count(self) -> int:
-        return self._vert_count * self._horz_count
-
-    @property
-    def vertical_squares_count(self) -> int:
-        return self._vert_count
+        """
+        Get the total number of squares in the Charuco board.
+        """
+        return self._horz_count * self._vert_count
 
     @property
     def horizontal_squares_count(self) -> int:
+        """
+        Get the number of squares in the horizontal direction.
+        """
         return self._horz_count
 
     @property
+    def vertical_squares_count(self) -> int:
+        """
+        Get the number of squares in the vertical direction.
+        """
+        return self._vert_count
+
+    @property
+    def width_len(self) -> float:
+        """
+        Get the total width of the Charuco board in meters.
+        """
+        return self._horz_count * self._square_len
+
+    @property
+    def height_len(self) -> float:
+        """
+        Get the total height of the Charuco board in meters.
+        """
+        return self._vert_count * self._square_len
+
+    @property
     def square_ratio(self) -> float:
-        return self._horz_count / self._vert_count
+        """
+        Get the ratio of vertical to horizontal squares.
+        """
+        return self._vert_count / self._horz_count
 
     @property
     def aruco_ids(self) -> list[int]:
+        """
+        Get the list of ArUco marker IDs used in the Charuco board.
+        """
         return self._board.getIds().flatten().tolist()
 
     @property
     def random_seed(self) -> int | None:
+        """
+        Get the random seed used for shuffling the ArUco markers.
+        """
         return self._random_seed
 
     @property
     def cv2_board_image(self) -> np.ndarray:
+        """
+        Get the generated Charuco board image as a cv2 image.
+        """
         return self._board_image
 
     def show(self) -> None:
+        """
+        Show the generated Charuco board image in a window.
+        """
         cv2.imshow("img", self._board_image)
         cv2.waitKey()
 
     @classmethod
-    def load(cls, load_folder: Path, camera: Camera | None = None) -> "Charuco":
+    def load(cls, load_folder: Path) -> "Charuco":
+        """
+        Load a Charuco board from a folder containing the board parameters and image.
+
+        Parameters:
+            load_folder (Path): Path to the folder containing the board parameters and image.
+
+        Returns:
+            Charuco: Loaded Charuco board object.
+        """
         param_path = load_folder / "board.json"
         params = json.load(open(param_path, "r"))
-        if camera is not None:
-            params["camera"] = camera
         return cls(**params)
 
     def save(self, save_folder: Path, override: bool = False) -> None:
+        """
+        Save the Charuco board parameters and image to a folder.
+
+        Parameters:
+            save_folder (Path): Path to the folder where the board parameters and image will be saved
+            override (bool): Whether to override the folder if it already exists.
+        """
         if not override and save_folder.exists():
             raise FileExistsError(
                 f"The folder {save_folder} already exists. Use override=True to overwrite."
@@ -121,6 +173,12 @@ class Charuco:
         cv2.imwrite(save_folder / "board.png", self._board_image)
 
     def serialize(self) -> dict:
+        """
+        Serialize the Charuco board parameters to a dictionary.
+
+        Returns:
+            dict: Dictionary containing the Charuco board parameters.
+        """
         return {
             "vertical_squares_count": self._vert_count,
             "horizontal_squares_count": self._horz_count,
@@ -135,7 +193,7 @@ class Charuco:
     def detect(
         self,
         frame: Frame,
-        camera: Camera = Camera.default(),
+        camera: Camera,
         initial_guess: tuple[np.ndarray, np.ndarray] = None,
     ) -> tuple[Frame, tuple[np.ndarray, np.ndarray]]:
         """
@@ -143,9 +201,10 @@ class Charuco:
 
         Parameters:
             frame (Frame): Frame to detect markers and corners from.
-            initial_guess (tuple[np.ndarray, np.ndarray]): Initial guess for rotation and translation vectors.
+            camera (Camera): Camera parameters for pose estimation.
+            initial_guess (tuple[np.ndarray, np.ndarray]): Initial guess for translation and rotations vectors.
         Returns:
-            tuple[Frame, tuple[np.ndarray, np.ndarray]]: Updated frame with detected markers and corners drawn, rotation vector, and translation vector.
+            tuple[Frame, tuple[np.ndarray, np.ndarray]]: Updated frame with detected markers and corners drawn, translation vector, and rotation vector.
         """
         grayscale_frame = frame.get(grayscale=True)
         output_frame = frame.get().copy()
@@ -163,8 +222,8 @@ class Charuco:
 
         # Show the axes of reference
         # Default values
-        axis_length = 0.01  # Length of axes in meters
-        rotation_initial_guess, translation_initial_guess = (
+        axis_length = 1.0  # Length of axes in meters
+        translation_initial_guess, rotation_initial_guess = (
             (np.zeros((3, 1)), np.zeros((3, 1)))
             if initial_guess is None
             else initial_guess
@@ -188,12 +247,15 @@ class Charuco:
                 translation,
                 axis_length,
             )
-        return Frame(output_frame), (rotation, translation)
+        return Frame(output_frame), (translation, rotation)
 
 
 def _detect_marker_corners(
     frame: np.ndarray, charuco: Charuco
 ) -> tuple[list[np.ndarray], np.ndarray, np.ndarray, np.ndarray] | None:
+    """
+    Detect markers and ChArUco corners in the given image.
+    """
     corners, ids = _detect_markers(frame, charuco)
     if not corners or ids is None:
         return None
@@ -211,6 +273,9 @@ def _detect_marker_corners(
 def _detect_markers(
     frame: np.ndarray, charuco: Charuco
 ) -> tuple[list[np.ndarray], np.ndarray | None]:
+    """
+    Detect ArUco markers in the given image, filtering to only include those belonging to the specified Charuco board.
+    """
     corners, ids, _ = cv2.aruco.detectMarkers(frame, charuco._dictionary)
     if not corners or ids is None:
         return [], None

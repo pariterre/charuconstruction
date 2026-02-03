@@ -23,11 +23,11 @@ class Camera:
     distorsion_coefficients: np.ndarray
 
     @classmethod
-    def default(
+    def default_12mpx_camera(
         cls,
-        focal_length: float = 1000.0,
-        sensor_width: float = 36.0,
-        sensor_height: float = 24.0,
+        focal_length: float = 35.0,
+        sensor_width: float = 4000.0,
+        sensor_height: float = 3000.0,
     ) -> "Camera":
         matrix = np.array(
             [

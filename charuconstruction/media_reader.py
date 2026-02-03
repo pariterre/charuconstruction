@@ -6,6 +6,7 @@ import numpy as np
 
 from .camera import Camera
 from .frame import Frame
+from .math import Transformation
 
 if TYPE_CHECKING:
     from .charuco import Charuco
@@ -76,25 +77,21 @@ class CharucoMockReader(MediaReader):
     def __init__(
         self,
         boards: Iterable[Charuco],
-        angles: Iterable[Iterable[float]] = None,
-        camera: Camera = Camera.default(),
+        camera: Camera,
+        transformations: Iterable[Iterable[Transformation]] = None,
     ):
         self._boards = boards
-        if angles is None:
-            angles = [(0.0,) for _ in boards]
+        if transformations is None:
+            transformations = [[Transformation()] * len(boards)]
 
         # Sanity checks for angles
-        if len(angles) != len(self._boards):
-            raise ValueError(
-                "Number of angle sequences must match number of boards."
-            )
-        for i in range(len(boards)):
-            if len(angles[i]) != len(angles[0]):
+        for transformation in transformations:
+            if len(transformation) != len(self._boards):
                 raise ValueError(
-                    "All angle sequences must have the same length."
+                    "Number of transformations must match number of boards in all frames."
                 )
-        self._angles = angles
-        self._frame_count = len(angles[0])
+        self._transformations = transformations
+        self._frame_count = len(transformations)
 
         self._camera = camera
         self._current_angle_index = 0
@@ -112,83 +109,72 @@ class CharucoMockReader(MediaReader):
         if self._current_angle_index >= self._frame_count:
             return None
 
+        # First create a cv2 image with a white background which corresponds to a
+        # distant wall
+        frame = np.full(
+            (
+                int(self._camera.sensor_height),
+                int(self._camera.sensor_width),
+                3,
+            ),
+            255,
+            dtype=np.uint8,
+        )
+
         # Move the image further away and rotate the boards and get their images
-        cv2_imgs: list[np.ndarray] = []
-        for board, angles in zip(self._boards, self._angles):
-            angle = angles[self._current_angle_index]
-            img = self._move_image(
-                board.cv2_board_image, distance=10, angle_deg=angle
+        for board, transformations in zip(
+            self._boards, self._transformations[self._current_angle_index]
+        ):
+            img = self._project_board(
+                board.cv2_board_image,
+                transformation=transformations,
             )
-            cv2_imgs.append(cv2.cvtColor(src=img, code=cv2.COLOR_GRAY2BGR))
+            projected_img = cv2.cvtColor(src=img, code=cv2.COLOR_GRAY2BGR)
+
+            masked = projected_img < 255
+            frame[masked] = projected_img[masked]
+
         self._current_angle_index += 1
 
-        # Create a composite image
-        padded_imgs: list[np.ndarray] = []
-        max_img_height = max(cv2_imgs, key=lambda im: im.shape[0]).shape[0]
-        for img in cv2_imgs:
-            padded_imgs.append(
-                self._pad_center_vertical(img=img, target_height=max_img_height)
-            )
-        combined = np.hstack(padded_imgs)
-
         # Encode and decode to get a proper Frame object
-        success, buf = cv2.imencode(".png", combined)
+        success, buf = cv2.imencode(".png", frame)
         if not success:
             return None
         return Frame(cv2.imdecode(buf, cv2.IMREAD_COLOR))
 
-    def _move_image(
+    def _project_board(
         self,
         img: np.ndarray,
-        distance: float,
-        angle_deg: float,
-        background_color: int = 255,
+        transformation: Transformation,
     ) -> np.ndarray:
-        angle = np.deg2rad(angle_deg)
-        scale = self._camera.focal_length / (
-            self._camera.focal_length + distance
-        )
+        """
+        Project the Charuco board image with a given rotation and translation.
 
-        rotation_matrix = np.array(
-            [
-                [np.cos(angle), 0, np.sin(angle)],
-                [0, 1, 0],
-                [-np.sin(angle), 0, np.cos(angle)],
-            ]
-        )
-        translation_matrix = np.array(
-            [[scale, 0, 0], [0, scale, 0], [0, 0, 1]],
-            dtype=np.float32,
-        )
+        Parameters:
+            img (np.ndarray): The Charuco board image to project.
+            transformation (Transformation): The transformation containing translation and rotation.
+        """
+
+        # For a planar homography: H = K @ (R - t*n^T/d) @ K^(-1)
+        # where n is the normal to the plane (0,0,1) and d is distance
+        # Since the board is in the z=0 plane initially, we use:
+        # H = K @ (R + t @ [0,0,1]) @ K^(-1)
+        normal = np.array([[0.0], [0.0], [1.0]])
+        translation = transformation.translation.vector
+        rotation = transformation.rotation.matrix
         transformation_matrix = (
             self._camera.matrix
-            @ (translation_matrix @ rotation_matrix)
+            @ (rotation + translation @ normal.T)
             @ np.linalg.inv(self._camera.matrix)
         )
 
         # Project original image corners
-        height, width = img.shape[:2]
-        corners = np.array(
-            [[0, 0], [width, 0], [width, height], [0, height]], dtype=np.float32
-        )
-        transformed_corners: np.ndarray = cv2.perspectiveTransform(
-            corners[None, :, :], transformation_matrix
-        )[0]
-
-        min_x, min_y = transformed_corners.min(axis=0)
-        max_x, max_y = transformed_corners.max(axis=0)
-        new_width = int(np.ceil(max_x - min_x))
-        new_height = int(np.ceil(max_y - min_y))
-
-        # Translation to keep image fully visible
-        translation = np.array([[1, 0, -min_x], [0, 1, -min_y], [0, 0, 1]])
-        transformation_total = translation @ transformation_matrix
         return cv2.warpPerspective(
             img,
-            transformation_total,
-            (new_width, new_height),
+            transformation_matrix,
+            (int(self._camera.sensor_width), int(self._camera.sensor_height)),
             flags=cv2.INTER_LINEAR,
-            borderValue=background_color,
+            borderValue=255,
         )
 
     @staticmethod

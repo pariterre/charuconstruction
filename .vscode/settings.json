@@ -6,8 +6,9 @@
   "[python]": {
     "editor.defaultFormatter": "ms-python.black-formatter",
     "editor.formatOnSave": true,
-    "editor.rulers": [ 120 ],
+    "editor.rulers": [ 80 ],
   },
+  "black-formatter.args": ["--line-length", "80"],
   "[jsonc]": {
     "editor.tabSize": 2,
     "editor.detectIndentation": false,

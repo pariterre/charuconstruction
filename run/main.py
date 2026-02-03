@@ -6,25 +6,33 @@ import numpy as np
 
 
 def main():
-    camera = Camera.default(focal_length=500.0, sensor_width=1000.0, sensor_height=800.0)
+    camera = Camera.default(
+        focal_length=50.0, sensor_width=1000.0, sensor_height=800.0
+    )
 
     charuco_boards: list[Charuco] = []
     angles_list: list[list[float]] = []
     for i, folder_name in enumerate(os.environ["CHARUCOS"].split(",")):
-        charuco_boards.append(Charuco.load(Path(folder_name), camera=camera))
+        charuco_boards.append(Charuco.load(Path(folder_name)))
         if i == 0:
             angles_list.append(list(np.linspace(0, 30, 101)))
         else:
             angles_list.append(list(np.linspace(0, 0, 101)))
 
     # Detect markers for each Charuco board at each frame
-    reader = CharucoMockReader(boards=charuco_boards, angles=angles_list, camera=camera)
+    reader = CharucoMockReader(
+        boards=charuco_boards, angles=angles_list, camera=camera
+    )
     should_continue = True
     initial_guess = {}
     for frame in reader:
         frame_to_draw = Frame(frame.get())
         for charuco in charuco_boards:
-            frame_to_draw, results = charuco.detect(frame_to_draw, initial_guess=initial_guess.get(charuco))
+            frame_to_draw, results = charuco.detect(
+                frame_to_draw,
+                initial_guess=initial_guess.get(charuco),
+                camera=camera,
+            )
             initial_guess[charuco] = results
 
         should_continue = frame_to_draw.show(wait_time=None)

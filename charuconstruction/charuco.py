@@ -20,7 +20,6 @@ class Charuco:
         page_len: int,
         page_margin: int,
         aruco_dict: int = cv2.aruco.DICT_7X7_1000,
-        camera: Camera = Camera.default(),
         seed: int = None,
     ):
         """
@@ -43,12 +42,15 @@ class Charuco:
         self._marker_len = marker_len
         self._page_margin = page_margin
         self._page_len = page_len
-        self._camera = camera
 
         self._predefined_aruco_dict = aruco_dict
-        self._dictionary = cv2.aruco.getPredefinedDictionary(self._predefined_aruco_dict)
+        self._dictionary = cv2.aruco.getPredefinedDictionary(
+            self._predefined_aruco_dict
+        )
 
-        aruco_indices = list(range(0, vertical_squares_count * horizontal_squares_count))
+        aruco_indices = list(
+            range(0, vertical_squares_count * horizontal_squares_count)
+        )
         self._random_seed = seed
         rng = random.Random(seed)
         rng.shuffle(aruco_indices)
@@ -94,14 +96,6 @@ class Charuco:
     def cv2_board_image(self) -> np.ndarray:
         return self._board_image
 
-    @property
-    def camera(self) -> Camera:
-        return self._camera
-
-    @camera.setter
-    def camera(self, camera: Camera) -> None:
-        self._camera = camera
-
     def show(self) -> None:
         cv2.imshow("img", self._board_image)
         cv2.waitKey()
@@ -116,10 +110,14 @@ class Charuco:
 
     def save(self, save_folder: Path, override: bool = False) -> None:
         if not override and save_folder.exists():
-            raise FileExistsError(f"The folder {save_folder} already exists. Use override=True to overwrite.")
+            raise FileExistsError(
+                f"The folder {save_folder} already exists. Use override=True to overwrite."
+            )
         save_folder.mkdir(parents=True, exist_ok=True)
 
-        json.dump(self.serialize(), open(save_folder / "board.json", "w"), indent=2)
+        json.dump(
+            self.serialize(), open(save_folder / "board.json", "w"), indent=2
+        )
         cv2.imwrite(save_folder / "board.png", self._board_image)
 
     def serialize(self) -> dict:
@@ -137,6 +135,7 @@ class Charuco:
     def detect(
         self,
         frame: Frame,
+        camera: Camera = Camera.default(),
         initial_guess: tuple[np.ndarray, np.ndarray] = None,
     ) -> tuple[Frame, tuple[np.ndarray, np.ndarray]]:
         """
@@ -158,29 +157,33 @@ class Charuco:
 
         # Draw the detected markers and corners of the corresponding Charuco board
         cv2.aruco.drawDetectedMarkers(output_frame, corners, ids)
-        _draw_detected_corners_charuco_own(output_frame, charuco_corners, charuco_ids)
+        _draw_detected_corners_charuco_own(
+            output_frame, charuco_corners, charuco_ids
+        )
 
         # Show the axes of reference
         # Default values
         axis_length = 0.01  # Length of axes in meters
         rotation_initial_guess, translation_initial_guess = (
-            (np.zeros((3, 1)), np.zeros((3, 1))) if initial_guess is None else initial_guess
+            (np.zeros((3, 1)), np.zeros((3, 1)))
+            if initial_guess is None
+            else initial_guess
         )
 
         ret, rotation, translation = cv2.aruco.estimatePoseCharucoBoard(
             charuco_corners,
             charuco_ids,
             self._board,
-            self._camera.matrix,
-            self._camera.distorsion_coefficients,
+            camera.matrix,
+            camera.distorsion_coefficients,
             rotation_initial_guess,
             translation_initial_guess,
         )
         if ret > 0:
             cv2.drawFrameAxes(
                 output_frame,
-                self._camera.matrix,
-                self._camera.distorsion_coefficients,
+                camera.matrix,
+                camera.distorsion_coefficients,
                 rotation,
                 translation,
                 axis_length,
@@ -196,8 +199,8 @@ def _detect_marker_corners(
         return None
 
     # Read chessboard corners between markers
-    corner_counts, charuco_corners, charuco_ids = cv2.aruco.interpolateCornersCharuco(
-        corners, ids, frame, charuco._board
+    corner_counts, charuco_corners, charuco_ids = (
+        cv2.aruco.interpolateCornersCharuco(corners, ids, frame, charuco._board)
     )
     if corner_counts == 0:
         return None
@@ -205,7 +208,9 @@ def _detect_marker_corners(
     return corners, ids, charuco_corners, charuco_ids
 
 
-def _detect_markers(frame: np.ndarray, charuco: Charuco) -> tuple[list[np.ndarray], np.ndarray | None]:
+def _detect_markers(
+    frame: np.ndarray, charuco: Charuco
+) -> tuple[list[np.ndarray], np.ndarray | None]:
     corners, ids, _ = cv2.aruco.detectMarkers(frame, charuco._dictionary)
     if not corners or ids is None:
         return [], None
@@ -235,7 +240,9 @@ def _detect_markers(frame: np.ndarray, charuco: Charuco) -> tuple[list[np.ndarra
             index = non_unique_ids.index(id)
             ids_tp.append(ids[index])
             corners_tp.append(corners[index])
-    mid_point = np.mean([np.mean(corner[:, 0, :], axis=0) for corner in corners_tp], axis=0)
+    mid_point = np.mean(
+        [np.mean(corner[:, 0, :], axis=0) for corner in corners_tp], axis=0
+    )
 
     for id in unique_ids:
         if non_unique_ids.count(id) == 1:

@@ -5,6 +5,19 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Create Board",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/run/create_board.py",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}/run/",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "CHARUCO_PARAMETERS": "[{\"vertical_squares_count\":7,\"horizontal_squares_count\":5,\"square_len\":0.03,\"marker_len\":0.02,\"page_len\":1000,\"page_margin\":20,\"seed\":42},{\"vertical_squares_count\":7,\"horizontal_squares_count\":5,\"square_len\":0.03,\"marker_len\":0.02,\"page_len\":1000,\"page_margin\":20,\"seed\":24}]",
+      }
+    },
+    {
       "name": "Main",
       "type": "debugpy",
       "request": "launch",
@@ -16,19 +29,6 @@
         "PYTHONPATH": "${workspaceFolder}",
         "CHARUCOS": "charuco_7x5_24,charuco_7x5_42",
         //"CHARUCOS": "charuco_7x5_42",
-      }
-    },
-    {
-      "name": "Create Board",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/run/create_board.py",
-      "console": "integratedTerminal",
-      "justMyCode": false,
-      "cwd": "${workspaceFolder}/run/",
-      "env": {
-        "PYTHONPATH": "${workspaceFolder}",
-        "CHARUCO_PARAMETERS": "[{\"vertical_squares_count\":7,\"horizontal_squares_count\":5,\"square_len\":0.03,\"marker_len\":0.02,\"page_len\":1000,\"page_margin\":20,\"seed\":42},{\"vertical_squares_count\":7,\"horizontal_squares_count\":5,\"square_len\":0.03,\"marker_len\":0.02,\"page_len\":1000,\"page_margin\":20,\"seed\":24}]",
       }
     },
   ]

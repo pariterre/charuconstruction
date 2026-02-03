@@ -23,7 +23,12 @@ class Camera:
     distorsion_coefficients: np.ndarray
 
     @classmethod
-    def default(cls, focal_length: float = 1000.0, sensor_width: float = 36.0, sensor_height: float = 24.0) -> "Camera":
+    def default(
+        cls,
+        focal_length: float = 1000.0,
+        sensor_width: float = 36.0,
+        sensor_height: float = 24.0,
+    ) -> "Camera":
         matrix = np.array(
             [
                 [focal_length, 0.0, sensor_width / 2.0],
@@ -32,4 +37,6 @@ class Camera:
             ]
         )
         dist_coeffs = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
-        return cls(focal_length, sensor_width, sensor_height, matrix, dist_coeffs)
+        return cls(
+            focal_length, sensor_width, sensor_height, matrix, dist_coeffs
+        )

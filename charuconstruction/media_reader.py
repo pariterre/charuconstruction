@@ -74,7 +74,10 @@ class VideoReader(MediaReader):
 
 class CharucoMockReader(MediaReader):
     def __init__(
-        self, boards: Iterable[Charuco], angles: Iterable[Iterable[float]] = None, camera: Camera = Camera.default()
+        self,
+        boards: Iterable[Charuco],
+        angles: Iterable[Iterable[float]] = None,
+        camera: Camera = Camera.default(),
     ):
         self._boards = boards
         if angles is None:
@@ -82,10 +85,14 @@ class CharucoMockReader(MediaReader):
 
         # Sanity checks for angles
         if len(angles) != len(self._boards):
-            raise ValueError("Number of angle sequences must match number of boards.")
+            raise ValueError(
+                "Number of angle sequences must match number of boards."
+            )
         for i in range(len(boards)):
             if len(angles[i]) != len(angles[0]):
-                raise ValueError("All angle sequences must have the same length.")
+                raise ValueError(
+                    "All angle sequences must have the same length."
+                )
         self._angles = angles
         self._frame_count = len(angles[0])
 
@@ -109,7 +116,9 @@ class CharucoMockReader(MediaReader):
         cv2_imgs: list[np.ndarray] = []
         for board, angles in zip(self._boards, self._angles):
             angle = angles[self._current_angle_index]
-            img = self._move_image(board.cv2_board_image, distance=10, angle_deg=angle)
+            img = self._move_image(
+                board.cv2_board_image, distance=10, angle_deg=angle
+            )
             cv2_imgs.append(cv2.cvtColor(src=img, code=cv2.COLOR_GRAY2BGR))
         self._current_angle_index += 1
 
@@ -117,7 +126,9 @@ class CharucoMockReader(MediaReader):
         padded_imgs: list[np.ndarray] = []
         max_img_height = max(cv2_imgs, key=lambda im: im.shape[0]).shape[0]
         for img in cv2_imgs:
-            padded_imgs.append(self._pad_center_vertical(img=img, target_height=max_img_height))
+            padded_imgs.append(
+                self._pad_center_vertical(img=img, target_height=max_img_height)
+            )
         combined = np.hstack(padded_imgs)
 
         # Encode and decode to get a proper Frame object
@@ -127,24 +138,42 @@ class CharucoMockReader(MediaReader):
         return Frame(cv2.imdecode(buf, cv2.IMREAD_COLOR))
 
     def _move_image(
-        self, img: np.ndarray, distance: float, angle_deg: float, background_color: int = 255
+        self,
+        img: np.ndarray,
+        distance: float,
+        angle_deg: float,
+        background_color: int = 255,
     ) -> np.ndarray:
         angle = np.deg2rad(angle_deg)
-        scale = self._camera.focal_length / (self._camera.focal_length + distance)
+        scale = self._camera.focal_length / (
+            self._camera.focal_length + distance
+        )
 
-        rotation_matrix = np.array([[np.cos(angle), 0, np.sin(angle)], [0, 1, 0], [-np.sin(angle), 0, np.cos(angle)]])
+        rotation_matrix = np.array(
+            [
+                [np.cos(angle), 0, np.sin(angle)],
+                [0, 1, 0],
+                [-np.sin(angle), 0, np.cos(angle)],
+            ]
+        )
         translation_matrix = np.array(
             [[scale, 0, 0], [0, scale, 0], [0, 0, 1]],
             dtype=np.float32,
         )
         transformation_matrix = (
-            self._camera.matrix @ (translation_matrix @ rotation_matrix) @ np.linalg.inv(self._camera.matrix)
+            self._camera.matrix
+            @ (translation_matrix @ rotation_matrix)
+            @ np.linalg.inv(self._camera.matrix)
         )
 
         # Project original image corners
         height, width = img.shape[:2]
-        corners = np.array([[0, 0], [width, 0], [width, height], [0, height]], dtype=np.float32)
-        transformed_corners: np.ndarray = cv2.perspectiveTransform(corners[None, :, :], transformation_matrix)[0]
+        corners = np.array(
+            [[0, 0], [width, 0], [width, height], [0, height]], dtype=np.float32
+        )
+        transformed_corners: np.ndarray = cv2.perspectiveTransform(
+            corners[None, :, :], transformation_matrix
+        )[0]
 
         min_x, min_y = transformed_corners.min(axis=0)
         max_x, max_y = transformed_corners.max(axis=0)
@@ -155,16 +184,24 @@ class CharucoMockReader(MediaReader):
         translation = np.array([[1, 0, -min_x], [0, 1, -min_y], [0, 0, 1]])
         transformation_total = translation @ transformation_matrix
         return cv2.warpPerspective(
-            img, transformation_total, (new_width, new_height), flags=cv2.INTER_LINEAR, borderValue=background_color
+            img,
+            transformation_total,
+            (new_width, new_height),
+            flags=cv2.INTER_LINEAR,
+            borderValue=background_color,
         )
 
     @staticmethod
     def _pad_center_vertical(
-        img: np.ndarray, target_height: float, background_color: tuple[int, int, int] = (255, 255, 255)
+        img: np.ndarray,
+        target_height: float,
+        background_color: tuple[int, int, int] = (255, 255, 255),
     ) -> np.ndarray:
         height, _ = img.shape[:2]
         if height >= target_height:
             return img
         top = (target_height - height) // 2
         bottom = target_height - height - top
-        return cv2.copyMakeBorder(img, top, bottom, 0, 0, cv2.BORDER_CONSTANT, value=background_color)
+        return cv2.copyMakeBorder(
+            img, top, bottom, 0, 0, cv2.BORDER_CONSTANT, value=background_color
+        )

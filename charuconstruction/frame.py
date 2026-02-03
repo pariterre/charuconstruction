@@ -20,7 +20,13 @@ class Frame:
             return self._grayscale_frame
         return self._frame
 
-    def show(self, max_width=1280, max_height=720, grayscale: bool = False, wait_time: int = None) -> bool:
+    def show(
+        self,
+        max_width=1280,
+        max_height=720,
+        grayscale: bool = False,
+        wait_time: int = None,
+    ) -> bool:
         """
         Show the frame in a window, resized to fit within max dimensions.
 

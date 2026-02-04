@@ -11,28 +11,25 @@ from charuconstruction import (
     RotationMatrix,
     Vector3,
 )
-import cv2
 import numpy as np
 
 
-def main():
-    camera = Camera.default_iphone_camera()
+def simulate_reader(
+    camera: Camera,
+    charuco_boards: list[Charuco],
+) -> CharucoMockReader:
     frame_count = 100
 
-    # Load the boards
-    charuco_boards: list[Charuco] = []
-    for i, folder_name in enumerate(os.environ["CHARUCOS"].split(",")):
-        charuco_boards.append(Charuco.load(Path(folder_name)))
-
     # Create some motion for each board
-    transformations_list: list[list[Transformation]] = []
+    transformations: dict[Charuco, list[Transformation]] = {
+        charuco: [] for charuco in charuco_boards
+    }
     for i in range(frame_count):
-        transformations: list[Transformation] = []
         for j in range(len(charuco_boards)):
             base_translation = -0.4 if j == 0 else -0.7
             translation = i * 0.02 * (1 if j == 0 else -1)
             rotation = i * 1 * (1 if j == 0 else -1)
-            transformations.append(
+            transformations[charuco_boards[j]].append(
                 Transformation(
                     translation=TranslationVector(
                         base_translation + translation, -0.2 - translation, -1.5
@@ -44,14 +41,25 @@ def main():
                     ),
                 )
             )
-        transformations_list.append(transformations)
 
     # Detect markers for each Charuco board at each frame
-    reader = CharucoMockReader(
+    return CharucoMockReader(
         boards=charuco_boards,
-        transformations=transformations_list,
+        transformations=transformations,
         camera=camera,
     )
+
+
+def main():
+    # Load the material used for the experiment
+    camera = Camera.default_iphone_camera()
+    charuco_boards: list[Charuco] = []
+    for folder_name in os.environ["CHARUCOS"].split(","):
+        charuco_boards.append(Charuco.load(Path(folder_name)))
+
+    # Simulate a reader (since we don't have real media for now)
+    reader = simulate_reader(camera, charuco_boards)
+
     should_continue = True
     initial_guess = {}
     errors: dict[Charuco, list[np.ndarray]] = {}
@@ -68,13 +76,10 @@ def main():
             initial_guess[charuco] = results
 
             # Compute the reconstruction error in degrees
-            true_values = (
-                transformations_list[frame_index][charuco_index]
-                .rotation.to_euler(
-                    sequence=RotationMatrix.Sequence.ZYX, degrees=True
-                )
-                .as_array()
-            )
+            real_transformation = reader.transformations[charuco][frame_index]
+            true_values = real_transformation.rotation.to_euler(
+                sequence=RotationMatrix.Sequence.ZYX, degrees=True
+            ).as_array()
             reconstructed_values = (
                 RotationMatrix(results[1])
                 .to_euler(sequence=RotationMatrix.Sequence.ZYX, degrees=True)

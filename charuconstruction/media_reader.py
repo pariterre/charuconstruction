@@ -78,35 +78,45 @@ class CharucoMockReader(MediaReader):
         self,
         boards: Iterable[Charuco],
         camera: Camera,
-        transformations: Iterable[Iterable[Transformation]] = None,
+        transformations: dict[Charuco, Iterable[Transformation]] = None,
     ):
         self._boards = boards
         if transformations is None:
-            transformations = [[Transformation()] * len(boards)]
+            transformations = {
+                charuco: [Transformation()] for charuco in boards
+            }
 
         # Sanity checks for angles
-        for transformation in transformations:
-            if len(transformation) != len(self._boards):
+        self._frame_count = (
+            len(transformations[next(iter(transformations))])
+            if transformations
+            else 0
+        )
+        for charuco in transformations.keys():
+            if len(transformations[charuco]) != self._frame_count:
                 raise ValueError(
                     "Number of transformations must match number of boards in all frames."
                 )
         self._transformations = transformations
-        self._frame_count = len(transformations)
 
         self._camera = camera
-        self._current_angle_index = 0
+        self._current_index = 0
 
         super().__init__()
 
     def destroy(self):
         pass
 
+    @property
+    def transformations(self) -> dict[Charuco, Iterable[Transformation]]:
+        return self._transformations
+
     def __iter__(self) -> "CharucoMockReader":
-        self._current_angle_index = 0
+        self._current_index = 0
         return self
 
     def _read_frame(self):
-        if self._current_angle_index >= self._frame_count:
+        if self._current_index >= self._frame_count:
             return None
 
         # First create a cv2 image with a white background which corresponds to a
@@ -122,9 +132,8 @@ class CharucoMockReader(MediaReader):
         )
 
         # Move the image further away and rotate the boards and get their images
-        for board, transformations in zip(
-            self._boards, self._transformations[self._current_angle_index]
-        ):
+        for board in self._boards:
+            transformations = self._transformations[board][self._current_index]
             img = self._project_board(
                 board.cv2_board_image,
                 transformation=transformations,
@@ -134,7 +143,7 @@ class CharucoMockReader(MediaReader):
             masked = projected_img < 255
             frame[masked] = projected_img[masked]
 
-        self._current_angle_index += 1
+        self._current_index += 1
 
         # Encode and decode to get a proper Frame object
         success, buf = cv2.imencode(".png", frame)

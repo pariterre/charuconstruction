@@ -133,17 +133,55 @@ class RotationMatrix:
             Vector3: The rotation angles around the X, Y, and Z axes.
         """
         R = self._matrix
-        if sequence == RotationMatrix.Sequence.ZYX:
-            sy = np.sqrt(R[0, 0] ** 2 + R[1, 0] ** 2)
-            singular = sy < 1e-6
-            if not singular:
-                x = np.arctan2(R[2, 1], R[2, 2])
-                y = np.arctan2(-R[2, 0], sy)
-                z = np.arctan2(R[1, 0], R[0, 0])
-            else:
-                x = np.arctan2(-R[1, 2], R[1, 1])
-                y = np.arctan2(-R[2, 0], sy)
-                z = 0
+
+        if sequence == RotationMatrix.Sequence.XYZ:
+            # psi = atan2(-R(2,3,:), R(3,3,:))
+            # theta = asin(R(1,3,:))
+            # phi = atan2(-R(1,2,:), R(1,1,:))
+            x = np.arctan2(-R[1, 2], R[2, 2])
+            y = np.arcsin(R[0, 2])
+            z = np.arctan2(-R[0, 1], R[0, 0])
+
+        elif sequence == RotationMatrix.Sequence.XZY:
+            # psi = atan2(R(3,2,:), R(2,2,:))
+            # phi = atan2(R(1,3,:), R(1,1,:))
+            # theta = asin(-R(1,2,:))
+            x = np.arctan2(R[2, 1], R[1, 1])
+            y = np.arctan2(R[0, 2], R[0, 0])
+            z = np.arcsin(-R[0, 1])
+
+        elif sequence == RotationMatrix.Sequence.YXZ:
+            # theta = asin(-R(2,3,:))
+            # psi = atan2(R(1,3,:), R(3,3,:))
+            # phi = atan2(R(2,1,:), R(2,2,:))
+            x = np.arcsin(-R[1, 2])
+            y = np.arctan2(R[0, 2], R[2, 2])
+            z = np.arctan2(R[1, 0], R[1, 1])
+
+        elif sequence == RotationMatrix.Sequence.YZX:
+            # phi = atan2(-R(2,3,:), R(2,2,:))
+            # psi = atan2(-R(3,1,:), R(1,1,:))
+            # theta = asin(R(2,1,:))
+            x = np.arctan2(-R[1, 2], R[1, 1])
+            y = np.arctan2(-R[2, 0], R[0, 0])
+            z = np.arcsin(R[1, 0])
+
+        elif sequence == RotationMatrix.Sequence.ZXY:
+            # theta = asin(R(3,2,:))
+            # phi = atan2(-R(3,1,:), R(3,3,:))
+            # psi = atan2(-R(1,2,:), R(2,2,:))
+            x = np.arcsin(R[2, 1])
+            y = np.arctan2(-R[2, 0], R[2, 2])
+            z = np.arctan2(-R[0, 1], R[1, 1])
+
+        elif sequence == RotationMatrix.Sequence.ZYX:
+            # phi = atan2(R(3,2,:), R(3,3,:))
+            # theta = asin(-R(3,1,:))
+            # psi = atan2(R(2,1,:), R(1,1,:))
+            x = np.arctan2(R[2, 1], R[2, 2])
+            y = np.arcsin(-R[2, 0])
+            z = np.arctan2(R[1, 0], R[0, 0])
+
         else:
             raise NotImplementedError(
                 f"Sequence {sequence} not implemented yet."

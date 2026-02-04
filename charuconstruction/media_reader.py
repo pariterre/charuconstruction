@@ -158,21 +158,24 @@ class CharucoMockReader(MediaReader):
         # For a planar homography: H = K @ (R - t*n^T/d) @ K^(-1)
         # where n is the normal to the plane (0,0,1) and d is distance
         # Since the board is in the z=0 plane initially, we use:
-        # H = K @ (R + t @ [0,0,1]) @ K^(-1)
+        # H = K @ (R - t @ [0,0,1]) @ K^(-1)
         normal = np.array([[0.0], [0.0], [1.0]])
+        d = 1.0
+        d0 = np.array([[0.0], [0.0], [1]])
+
         translation = transformation.translation.vector
         rotation = transformation.rotation.matrix
-        transformation_matrix = (
-            self._camera.matrix
-            @ (rotation + translation @ normal.T)
-            @ np.linalg.inv(self._camera.matrix)
-        )
-
-        # Project original image corners
         return cv2.warpPerspective(
             img,
-            transformation_matrix,
-            (int(self._camera.sensor_width), int(self._camera.sensor_height)),
+            (
+                self._camera.matrix
+                @ (rotation - (translation + d0) @ normal.T / d)
+                @ np.linalg.inv(self._camera.matrix)
+            ),
+            (
+                int(self._camera.sensor_width),
+                int(self._camera.sensor_height),
+            ),
             flags=cv2.INTER_LINEAR,
             borderValue=255,
         )

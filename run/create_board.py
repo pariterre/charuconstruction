@@ -13,7 +13,7 @@ def main():
         charuco.save(
             save_folder=Path(
                 f"charuco_"
-                f"{charuco.vertical_squares_count}x{charuco.horizontal_squares_count}"
+                f"{charuco.horizontal_squares_count}x{charuco.vertical_squares_count}"
                 f"_{charuco.random_seed}",
             ),
             override=True,

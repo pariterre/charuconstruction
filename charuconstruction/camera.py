@@ -23,11 +23,11 @@ class Camera:
     distorsion_coefficients: np.ndarray
 
     @classmethod
-    def default_12mpx_camera(
+    def default_iphone_camera(
         cls,
-        focal_length: float = 35.0,
-        sensor_width: float = 4000.0,
-        sensor_height: float = 3000.0,
+        focal_length: float = 2200,
+        sensor_width: float = 3000.0,
+        sensor_height: float = 1800.0,
     ) -> "Camera":
         matrix = np.array(
             [

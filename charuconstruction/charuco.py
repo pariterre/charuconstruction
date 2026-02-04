@@ -17,8 +17,8 @@ class Charuco:
         horizontal_squares_count: int,
         square_len: float,
         marker_len: float,
-        page_len: int,
-        page_margin: int,
+        normalized_px_count: int,
+        margin_px_count: int,
         aruco_dict: int = cv2.aruco.DICT_7X7_1000,
         seed: int = None,
     ):
@@ -30,18 +30,25 @@ class Charuco:
             horizontal_squares_count (int): Number of squares in the horizontal direction.
             square_len (float): Length of the squares in meters.
             marker_len (float): Length of the ArUco markers in meters (cannot be greater than square_len).
-            page_len (int): Total length of the page in pixels when generating the board image.
-            page_margin (int): Margin size in pixels when generating the board image.
+            normalized_px_count (int): Total length of the normalized page (i.e. the number of pixels
+                of a 1 meter object at one meter) in pixels when generating the board image.
+                When simulating the board, this MUST be equal to the focal length in pixels for a camera capturing the board at 1 meter.
+            margin_px_count (int): Margin size in pixels when generating the board image.
             aruco_dict (int): Predefined ArUco dictionary to use.
             seed (int): Seed for random number generator (will determine the order of aruco markers).
         """
+
+        if marker_len > square_len:
+            raise ValueError(
+                "The marker length cannot be greater than the square length."
+            )
 
         self._vert_count = vertical_squares_count
         self._horz_count = horizontal_squares_count
         self._square_len = square_len
         self._marker_len = marker_len
-        self._page_margin = page_margin
-        self._page_len = page_len
+        self._margin_px_count = margin_px_count
+        self._normalized_px_count = normalized_px_count
 
         self._predefined_aruco_dict = aruco_dict
         self._dictionary = cv2.aruco.getPredefinedDictionary(
@@ -62,10 +69,21 @@ class Charuco:
             self._marker_len,
             self._dictionary,
         )
+
+        if self._horz_count >= self._vert_count:
+            page_len = int(
+                self._normalized_px_count * self._square_len * self._horz_count
+            )
+            img_len = (page_len, int(page_len * self.square_ratio))
+        else:
+            page_len = int(
+                self._normalized_px_count * self._square_len * self._vert_count
+            )
+            img_len = (int(page_len / self.square_ratio), page_len)
         self._board_image: np.ndarray = cv2.aruco.CharucoBoard.generateImage(
             self._board,
-            (self._page_len, int(self._page_len * self.square_ratio)),
-            marginSize=self._page_margin,
+            outSize=img_len,
+            marginSize=self._margin_px_count,
         )
 
     @property
@@ -184,8 +202,8 @@ class Charuco:
             "horizontal_squares_count": self._horz_count,
             "square_len": self._square_len,
             "marker_len": self._marker_len,
-            "page_len": self._page_len,
-            "page_margin": self._page_margin,
+            "normalized_px_count": self._normalized_px_count,
+            "margin_px_count": self._margin_px_count,
             "aruco_dict": self._predefined_aruco_dict,
             "seed": self._random_seed,
         }
@@ -202,9 +220,9 @@ class Charuco:
         Parameters:
             frame (Frame): Frame to detect markers and corners from.
             camera (Camera): Camera parameters for pose estimation.
-            initial_guess (tuple[np.ndarray, np.ndarray]): Initial guess for translation and rotations vectors.
+            initial_guess (tuple[np.ndarray, np.ndarray]): Initial guess for translation vector and rotation matrix.
         Returns:
-            tuple[Frame, tuple[np.ndarray, np.ndarray]]: Updated frame with detected markers and corners drawn, translation vector, and rotation vector.
+            tuple[Frame, tuple[np.ndarray, np.ndarray]]: Updated frame with detected markers and corners drawn, translation vector, and rotation matrix.
         """
         grayscale_frame = frame.get(grayscale=True)
         output_frame = frame.get().copy()
@@ -226,7 +244,18 @@ class Charuco:
         translation_initial_guess, rotation_initial_guess = (
             (np.zeros((3, 1)), np.zeros((3, 1)))
             if initial_guess is None
-            else initial_guess
+            else (
+                (
+                    initial_guess[0]
+                    if initial_guess[0] is not None
+                    else np.zeros((3, 1))
+                ),
+                (
+                    cv2.Rodrigues(initial_guess[1])[0]
+                    if initial_guess[1] is not None
+                    else np.zeros((3, 1))
+                ),
+            )
         )
 
         ret, rotation, translation = cv2.aruco.estimatePoseCharucoBoard(
@@ -247,7 +276,7 @@ class Charuco:
                 translation,
                 axis_length,
             )
-        return Frame(output_frame), (translation, rotation)
+        return Frame(output_frame), (translation, cv2.Rodrigues(rotation)[0])
 
 
 def _detect_marker_corners(
@@ -296,6 +325,8 @@ def _detect_markers(
     ids = np.array(ids_tp)
     corners = corners_tp
 
+    if len(ids) == 0:
+        return [], None
     non_unique_ids: list[int] = ids[:, 0].tolist()
     unique_ids: set[int] = set(ids[:, 0].tolist())
     ids_tp = []

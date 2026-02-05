@@ -76,12 +76,12 @@ def main():
             initial_guess[charuco] = results
 
             # Compute the reconstruction error in degrees
-            real_transformation = reader.transformations[charuco][frame_index]
-            true_values = real_transformation.rotation.to_euler(
+            true_transformation = reader.transformations[charuco][frame_index]
+            true_values = true_transformation.rotation.to_euler(
                 sequence=RotationMatrix.Sequence.ZYX, degrees=True
             ).as_array()
             reconstructed_values = (
-                RotationMatrix(results[1])
+                results[1]
                 .to_euler(sequence=RotationMatrix.Sequence.ZYX, degrees=True)
                 .as_array()
                 if results[1] is not None

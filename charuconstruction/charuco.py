@@ -8,6 +8,7 @@ import numpy as np
 
 from .camera import Camera
 from .media_reader import Frame
+from .math import TranslationVector, RotationMatrix
 
 
 class Charuco:
@@ -212,17 +213,19 @@ class Charuco:
         self,
         frame: Frame,
         camera: Camera,
-        initial_guess: tuple[np.ndarray, np.ndarray] = None,
-    ) -> tuple[Frame, tuple[np.ndarray, np.ndarray]]:
+        initial_guess: tuple[TranslationVector, RotationMatrix] = None,
+    ) -> tuple[Frame, tuple[TranslationVector, RotationMatrix]]:
         """
         Detect markers and ChArUco corners in the given image.
 
         Parameters:
             frame (Frame): Frame to detect markers and corners from.
             camera (Camera): Camera parameters for pose estimation.
-            initial_guess (tuple[np.ndarray, np.ndarray]): Initial guess for translation vector and rotation matrix.
+            initial_guess (tuple[TranslationVector, RotationMatrix]): Initial guess
+              for translation vector and rotation matrix.
         Returns:
-            tuple[Frame, tuple[np.ndarray, np.ndarray]]: Updated frame with detected markers and corners drawn, translation vector, and rotation matrix.
+            tuple[Frame, tuple[TranslationVector, RotationMatrix]]: Updated frame
+              with detected markers and corners drawn, translation vector, and rotation matrix.
         """
         grayscale_frame = frame.get(grayscale=True)
         output_frame = frame.get().copy()
@@ -241,21 +244,16 @@ class Charuco:
         # Show the axes of reference
         # Default values
         axis_length = 1.0  # Length of axes in meters
-        translation_initial_guess, rotation_initial_guess = (
-            (np.zeros((3, 1)), np.zeros((3, 1)))
-            if initial_guess is None
-            else (
-                (
-                    initial_guess[0]
-                    if initial_guess[0] is not None
-                    else np.zeros((3, 1))
-                ),
-                (
-                    cv2.Rodrigues(initial_guess[1])[0]
-                    if initial_guess[1] is not None
-                    else np.zeros((3, 1))
-                ),
-            )
+        initial_guess = (None, None) if initial_guess is None else initial_guess
+        translation_initial_guess = (
+            initial_guess[0].as_array()
+            if initial_guess[0] is not None
+            else np.zeros((3, 1))
+        )
+        rotation_initial_guess = (
+            initial_guess[1].to_rodrigues()
+            if initial_guess[1] is not None
+            else np.zeros((3, 1))
         )
 
         ret, rotation, translation = cv2.aruco.estimatePoseCharucoBoard(
@@ -276,7 +274,10 @@ class Charuco:
                 translation,
                 axis_length,
             )
-        return Frame(output_frame), (translation, cv2.Rodrigues(rotation)[0])
+        return Frame(output_frame), (
+            TranslationVector.from_array(translation),
+            RotationMatrix(cv2.Rodrigues(rotation)[0]),
+        )
 
 
 def _detect_marker_corners(

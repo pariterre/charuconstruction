@@ -18,6 +18,10 @@ class Vector3:
 
         return cls(array[0, 0], array[1, 0], array[2, 0])
 
+    @classmethod
+    def zero(cls) -> "Vector3":
+        return cls(0.0, 0.0, 0.0)
+
     @property
     def x(self) -> float:
         return self._vector[0, 0]
@@ -53,6 +57,10 @@ class RotationMatrix:
         if matrix.shape != (3, 3):
             raise ValueError("Rotation matrix must be of shape (3, 3)")
         self._matrix = matrix
+
+    @classmethod
+    def identity(cls) -> "RotationMatrix":
+        return cls(np.eye(3))
 
     @classmethod
     def from_euler(
@@ -193,6 +201,26 @@ class RotationMatrix:
             z = np.rad2deg(z)
 
         return Vector3(x, y, z)
+
+    def as_array(self) -> np.ndarray:
+        return self._matrix
+
+    def to_rodrigues(self) -> np.ndarray:
+        """
+        Convert the rotation matrix to Rodrigues vector.
+
+        Returns:
+            np.ndarray: The Rodrigues vector (3x1).
+        """
+        theta = np.arccos((np.trace(self._matrix) - 1) / 2)
+        if theta == 0:
+            return np.zeros((3, 1))
+        else:
+            rx = (self._matrix[2, 1] - self._matrix[1, 2]) / (2 * np.sin(theta))
+            ry = (self._matrix[0, 2] - self._matrix[2, 0]) / (2 * np.sin(theta))
+            rz = (self._matrix[1, 0] - self._matrix[0, 1]) / (2 * np.sin(theta))
+            r = np.array([[rx], [ry], [rz]])
+            return r * theta
 
 
 class Transformation:

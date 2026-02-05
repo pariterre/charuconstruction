@@ -108,7 +108,7 @@ class CharucoMockReader(MediaReader):
         pass
 
     @property
-    def transformations(self) -> dict[Charuco, Iterable[Transformation]]:
+    def transformations(self) -> dict[Charuco, tuple[Transformation]]:
         return self._transformations
 
     def __iter__(self) -> "CharucoMockReader":

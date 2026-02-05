@@ -17,6 +17,7 @@ import numpy as np
 def simulate_reader(
     camera: Camera,
     charuco_boards: list[Charuco],
+    use_gui: bool = False,
 ) -> CharucoMockReader:
     frame_count = 100
 
@@ -24,23 +25,26 @@ def simulate_reader(
     transformations: dict[Charuco, list[Transformation]] = {
         charuco: [] for charuco in charuco_boards
     }
-    for i in range(frame_count):
-        for j in range(len(charuco_boards)):
-            base_translation = -0.4 if j == 0 else -0.7
-            translation = i * 0.02 * (1 if j == 0 else -1)
-            rotation = i * 1 * (1 if j == 0 else -1)
-            transformations[charuco_boards[j]].append(
-                Transformation(
-                    translation=TranslationVector(
-                        base_translation + translation, -0.2 - translation, -1.5
-                    ),
-                    rotation=RotationMatrix.from_euler(
-                        Vector3(rotation, rotation, rotation),
-                        degrees=True,
-                        sequence=RotationMatrix.Sequence.ZYX,
-                    ),
+    if use_gui:
+        transformations = None
+    else:
+        for i in range(frame_count):
+            for j in range(len(charuco_boards)):
+                base_translation = -0.7 if j == 0 else 0.7
+                translation = i * 0.01 * (1 if j == 0 else -1) * 0
+                rotation = i * 1 * (1 if j == 0 else -1)
+                transformations[charuco_boards[j]].append(
+                    Transformation(
+                        translation=TranslationVector(
+                            base_translation + translation, 0, 2.5
+                        ),
+                        rotation=RotationMatrix.from_euler(
+                            Vector3(rotation, rotation, rotation),
+                            degrees=True,
+                            sequence=RotationMatrix.Sequence.ZYX,
+                        ),
+                    )
                 )
-            )
 
     # Detect markers for each Charuco board at each frame
     return CharucoMockReader(
@@ -58,14 +62,16 @@ def main():
         charuco_boards.append(Charuco.load(Path(folder_name)))
 
     # Simulate a reader (since we don't have real media for now)
-    reader = simulate_reader(camera, charuco_boards)
+    reader = simulate_reader(
+        camera, charuco_boards, use_gui=os.environ.get("WITH_GUI") == "true"
+    )
 
     should_continue = True
     initial_guess = {}
     errors: dict[Charuco, list[np.ndarray]] = {}
-    for frame_index, frame in enumerate(reader):
+    for frame in reader:
         frame_to_draw = Frame(frame.get())
-        for charuco_index, charuco in enumerate(charuco_boards):
+        for charuco in charuco_boards:
             frame_to_draw, results = charuco.detect(
                 frame_to_draw,
                 initial_guess=initial_guess.get(charuco),
@@ -76,7 +82,7 @@ def main():
             initial_guess[charuco] = results
 
             # Compute the reconstruction error in degrees
-            true_transformation = reader.transformations[charuco][frame_index]
+            true_transformation = reader.transformations(charuco)
             true_values = true_transformation.rotation.to_euler(
                 sequence=RotationMatrix.Sequence.ZYX, degrees=True
             ).as_array()
@@ -91,11 +97,13 @@ def main():
                 errors[charuco] = []
             errors[charuco].append(true_values - reconstructed_values)
 
-        should_continue = frame_to_draw.show(wait_time=None)
+        should_continue = frame_to_draw.show(
+            wait_time=1 if reader.with_gui else None
+        )
         if not should_continue:
             break
 
-    if should_continue:
+    if should_continue and not reader.with_gui:
         frame_to_draw.show(wait_time=None)
 
     reader.destroy()
@@ -103,6 +111,8 @@ def main():
     # Print the mean error for each Charuco board
     for charuco, error_list in errors.items():
         error_array = np.array(error_list).squeeze()
+        if not np.isfinite(error_array).any():
+            continue
         mean_error = np.nanmean(np.abs(error_array), axis=0)
         std_error = np.nanstd(error_array, axis=0)
         print(

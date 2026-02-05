@@ -28,7 +28,7 @@
       "env": {
         "PYTHONPATH": "${workspaceFolder}",
         "CHARUCOS": "charuco_7x5_24,charuco_7x5_42",
-        //"CHARUCOS": "charuco_7x5_42",
+        "WITH_GUI": "true",  // Set to "true" to enable GUI or "false" to disable it
       }
     },
   ]

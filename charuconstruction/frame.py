@@ -36,7 +36,7 @@ class Frame:
             grayscale (bool): Whether to show the grayscale version of the frame.
             wait_time (int): Time in milliseconds to wait for a key event. If None, waits indefinitely.
         Returns:
-            bool: True if the window is still open, False if it was closed.
+            bool: True if the window is visible, False if it is closed.
         """
         to_show = self._grayscale_frame if grayscale else self._frame
 
@@ -58,10 +58,10 @@ class Frame:
         cv2.waitKey(wait_time)
 
         try:
-            should_continue = (
+            is_visible = (
                 cv2.getWindowProperty("frame", cv2.WND_PROP_VISIBLE) >= 1
             )
-            return should_continue
+            return is_visible
 
         except cv2.error:
             # Window was closed

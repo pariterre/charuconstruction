@@ -19,7 +19,6 @@ def simulate_reader(
     charuco_boards: list[Charuco],
     use_gui: bool = False,
 ) -> CharucoMockReader:
-    frame_count = 100
 
     # Create some motion for each board
     transformations: dict[Charuco, list[Transformation]] = {
@@ -28,15 +27,16 @@ def simulate_reader(
     if use_gui:
         transformations = None
     else:
+        frame_count = 50
         for i in range(frame_count):
             for j in range(len(charuco_boards)):
-                base_translation = -0.7 if j == 0 else 0.7
+                base_translation = -0.4 if j == 0 else 0.4
                 translation = i * 0.01 * (1 if j == 0 else -1) * 0
                 rotation = i * 1 * (1 if j == 0 else -1)
                 transformations[charuco_boards[j]].append(
                     Transformation(
                         translation=TranslationVector(
-                            base_translation + translation, 0, 2.5
+                            base_translation + translation, 0, 1.5
                         ),
                         rotation=RotationMatrix.from_euler(
                             Vector3(rotation, rotation, rotation),
@@ -66,44 +66,69 @@ def main():
         camera, charuco_boards, use_gui=os.environ.get("WITH_GUI") == "true"
     )
 
-    should_continue = True
+    is_visible = False
     initial_guess = {}
     errors: dict[Charuco, list[np.ndarray]] = {}
     for frame in reader:
-        frame_to_draw = Frame(frame.get())
+        frame_results = {}
         for charuco in charuco_boards:
-            frame_to_draw, results = charuco.detect(
-                frame_to_draw,
-                initial_guess=initial_guess.get(charuco),
+            initial_guesses = initial_guess.get(charuco, (None, None))
+            translation_initial_guess, rotation_initial_guess = initial_guesses
+            frame_results[charuco] = charuco.detect(
+                frame=frame,
+                translation_initial_guess=translation_initial_guess,
+                rotation_initial_guess=rotation_initial_guess,
                 camera=camera,
             )
 
             # Prepare the initial guess for the next frame
-            initial_guess[charuco] = results
+            if None not in frame_results[charuco]:
+                initial_guess[charuco] = frame_results[charuco]
 
-            # Compute the reconstruction error in degrees
-            true_transformation = reader.transformations(charuco)
-            true_values = true_transformation.rotation.to_euler(
-                sequence=RotationMatrix.Sequence.ZYX, degrees=True
-            ).as_array()
-            reconstructed_values = (
-                results[1]
-                .to_euler(sequence=RotationMatrix.Sequence.ZYX, degrees=True)
+        # Compute the reconstruction error in degrees
+        for charuco in charuco_boards:
+            _, rotation = frame_results[charuco]
+
+            if rotation is None:
+                errors[charuco].append(np.ndarray((3, 1)) * np.nan)
+                continue
+            rotation: RotationMatrix
+
+            sequence = RotationMatrix.Sequence.ZYX
+            true_values = (
+                reader.transformations(charuco)
+                .rotation.to_euler(sequence=sequence, degrees=True)
                 .as_array()
-                if results[1] is not None
-                else np.ndarray((3, 1)) * np.nan
             )
+            reconstructed_values = rotation.to_euler(
+                sequence=sequence, degrees=True
+            ).as_array()
             if charuco not in errors:
                 errors[charuco] = []
             errors[charuco].append(true_values - reconstructed_values)
 
-        should_continue = frame_to_draw.show(
+        # Show the estimated pose for each board on the current frame
+        frame_to_draw = Frame(frame.get().copy())
+        for charuco in charuco_boards:
+            translation, rotation = frame_results[charuco]
+
+            if translation is not None and rotation is not None:
+                charuco.draw_aruco_markers(frame_to_draw)
+                charuco.draw_estimated_pose_axes(
+                    frame=frame_to_draw,
+                    camera=camera,
+                    translation=translation,
+                    rotation=rotation,
+                    axes_length=1,
+                )
+
+        is_visible = frame_to_draw.show(
             wait_time=1 if reader.with_gui else None
         )
-        if not should_continue:
+        if not is_visible:
             break
 
-    if should_continue and not reader.with_gui:
+    if not reader.with_gui and is_visible:
         frame_to_draw.show(wait_time=None)
 
     reader.destroy()

@@ -89,13 +89,16 @@ class CharucoMockReader(MediaReader):
 
         # Sanity checks for angles
         if transformations is None:
-            self._frame_count = -1
+            self._frame_count = None
+            self._current_index = None
         else:
             self._frame_count = (
                 len(transformations[next(iter(transformations))])
                 if transformations
                 else 0
             )
+            self._current_index = 0
+
             for charuco in transformations.keys():
                 if len(transformations[charuco]) != self._frame_count:
                     raise ValueError(
@@ -105,7 +108,6 @@ class CharucoMockReader(MediaReader):
 
         self._camera = camera
         self._dynamic_frame_ready = False
-        self._current_index = 0
 
         super().__init__()
 
@@ -117,10 +119,10 @@ class CharucoMockReader(MediaReader):
 
     @property
     def with_gui(self) -> bool:
-        return self._frame_count < 0
+        return self._frame_count is None
 
     @property
-    def frame_count(self) -> int:
+    def frame_count(self) -> int | None:
         return self._frame_count
 
     def transformations(self, charuco: Charuco) -> Transformation:
@@ -155,31 +157,32 @@ class CharucoMockReader(MediaReader):
                 cv2.namedWindow(ctrl, cv2.WINDOW_NORMAL)
                 cv2.resizeWindow(ctrl, 400, 300)
 
-                cv2.createTrackbar("Trans X", ctrl, 0, 1000, self._set_ready)
+                cv2.createTrackbar("Trans X", ctrl, 0, 1000, self._has_moved)
                 cv2.setTrackbarMin("Trans X", ctrl, -500)
                 cv2.setTrackbarMax("Trans X", ctrl, 500)
-                cv2.createTrackbar("Trans Y", ctrl, 0, 1000, self._set_ready)
+                cv2.createTrackbar("Trans Y", ctrl, 0, 1000, self._has_moved)
                 cv2.setTrackbarMin("Trans Y", ctrl, -500)
                 cv2.setTrackbarMax("Trans Y", ctrl, 500)
-                cv2.createTrackbar("Trans Z", ctrl, 150, 500, self._set_ready)
+                cv2.createTrackbar("Trans Z", ctrl, 150, 500, self._has_moved)
                 cv2.setTrackbarMin("Trans Z", ctrl, 0)
                 cv2.setTrackbarMax("Trans Z", ctrl, 500)
-                cv2.createTrackbar("Rot X", ctrl, 0, 360, self._set_ready)
+                cv2.createTrackbar("Rot X", ctrl, 0, 360, self._has_moved)
                 cv2.setTrackbarMin("Rot X", ctrl, -360)
                 cv2.setTrackbarMax("Rot X", ctrl, 360)
-                cv2.createTrackbar("Rot Y", ctrl, 0, 360, self._set_ready)
+                cv2.createTrackbar("Rot Y", ctrl, 0, 360, self._has_moved)
                 cv2.setTrackbarMin("Rot Y", ctrl, -360)
                 cv2.setTrackbarMax("Rot Y", ctrl, 360)
-                cv2.createTrackbar("Rot Z", ctrl, 0, 360, self._set_ready)
+                cv2.createTrackbar("Rot Z", ctrl, 0, 360, self._has_moved)
                 cv2.setTrackbarMin("Rot Z", ctrl, -360)
                 cv2.setTrackbarMax("Rot Z", ctrl, 360)
 
-                self._dynamic_frame_ready = True
+            self._dynamic_frame_ready = True
+        else:
+            self._current_index = 0
 
-        self._current_index = 0
         return self
 
-    def _set_ready(self, _) -> bool:
+    def _has_moved(self, _) -> bool:
         self._dynamic_frame_ready = True
 
     def _read_frame(self):
@@ -257,19 +260,4 @@ class CharucoMockReader(MediaReader):
             (int(self._camera.sensor_width), int(self._camera.sensor_height)),
             flags=cv2.INTER_LINEAR,
             borderValue=255,
-        )
-
-    @staticmethod
-    def _pad_center_vertical(
-        img: np.ndarray,
-        target_height: float,
-        background_color: tuple[int, int, int] = (255, 255, 255),
-    ) -> np.ndarray:
-        height, _ = img.shape[:2]
-        if height >= target_height:
-            return img
-        top = (target_height - height) // 2
-        bottom = target_height - height - top
-        return cv2.copyMakeBorder(
-            img, top, bottom, 0, 0, cv2.BORDER_CONSTANT, value=background_color
         )

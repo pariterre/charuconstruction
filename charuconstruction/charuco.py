@@ -213,46 +213,36 @@ class Charuco:
         self,
         frame: Frame,
         camera: Camera,
-        initial_guess: tuple[TranslationVector, RotationMatrix] = None,
-    ) -> tuple[Frame, tuple[TranslationVector, RotationMatrix]]:
+        translation_initial_guess: TranslationVector = None,
+        rotation_initial_guess: RotationMatrix = None,
+    ) -> tuple[TranslationVector | None, RotationMatrix | None]:
         """
         Detect markers and ChArUco corners in the given image.
 
         Parameters:
             frame (Frame): Frame to detect markers and corners from.
             camera (Camera): Camera parameters for pose estimation.
-            initial_guess (tuple[TranslationVector, RotationMatrix]): Initial guess
-              for translation vector and rotation matrix.
+            translation_initial_guess (TranslationVector): Initial guess
+              for translation vector.
+            rotation_initial_guess (RotationMatrix): Initial guess
+              for rotation matrix.
         Returns:
-            tuple[Frame, tuple[TranslationVector, RotationMatrix]]: Updated frame
-              with detected markers and corners drawn, translation vector, and rotation matrix.
+            tuple[TranslationVector | None, RotationMatrix | None]: translation vector and rotation matrix.
         """
-        grayscale_frame = frame.get(grayscale=True)
-        output_frame = frame.get().copy()
-
-        result = _detect_marker_corners(grayscale_frame, self)
+        result = _detect_marker_corners(frame, self)
         if result is None:
-            return frame, (None, None)
-        corners, ids, charuco_corners, charuco_ids = result
+            return None, None
+        _, _, charuco_corners, charuco_ids = result
 
-        # Draw the detected markers and corners of the corresponding Charuco board
-        cv2.aruco.drawDetectedMarkers(output_frame, corners, ids)
-        _draw_detected_corners_charuco_own(
-            output_frame, charuco_corners, charuco_ids
-        )
-
-        # Show the axes of reference
         # Default values
-        axis_length = 1.0  # Length of axes in meters
-        initial_guess = (None, None) if initial_guess is None else initial_guess
         translation_initial_guess = (
-            initial_guess[0].as_array()
-            if initial_guess[0] is not None
+            translation_initial_guess.as_array()
+            if translation_initial_guess is not None
             else np.zeros((3, 1))
         )
         rotation_initial_guess = (
-            initial_guess[1].to_rodrigues()
-            if initial_guess[1] is not None
+            rotation_initial_guess.to_rodrigues()
+            if rotation_initial_guess is not None
             else np.zeros((3, 1))
         )
 
@@ -265,34 +255,67 @@ class Charuco:
             rotation_initial_guess,
             translation_initial_guess,
         )
-        if ret > 0:
-            cv2.drawFrameAxes(
-                output_frame,
-                camera.matrix,
-                camera.distorsion_coefficients,
-                rotation,
-                translation,
-                axis_length,
-            )
-        return Frame(output_frame), (
-            TranslationVector.from_array(translation),
-            RotationMatrix(cv2.Rodrigues(rotation)[0]),
+        return (
+            TranslationVector.from_array(translation) if ret > 0 else None,
+            RotationMatrix(cv2.Rodrigues(rotation)[0]) if ret > 0 else None,
+        )
+
+    def draw_aruco_markers(self, frame: Frame) -> None:
+        result = _detect_marker_corners(frame, self)
+        if result is None:
+            return
+        corners, ids, charuco_corners, charuco_ids = result
+
+        # Draw the detected markers and corners of the corresponding Charuco board
+        cv2.aruco.drawDetectedMarkers(frame.get(), corners, ids)
+        _draw_detected_corners_charuco_own(
+            frame.get(), charuco_corners, charuco_ids
+        )
+
+    def draw_estimated_pose_axes(
+        self,
+        frame: Frame,
+        camera: Camera,
+        translation: TranslationVector,
+        rotation: RotationMatrix,
+        axes_length: float = 1.0,
+    ) -> None:
+        """
+        Draw the axes of reference corresponding to the given pose estimation.
+
+        Parameters:
+            frame (Frame): Frame to draw the axes on.
+            camera (Camera): Camera parameters for pose estimation.
+            translation (TranslationVector): Translation vector of the pose estimation.
+            rotation (RotationMatrix): Rotation matrix of the pose estimation.
+            axes_length (float): Length in meter of the axes to draw in the output frame.
+        """
+        cv2.drawFrameAxes(
+            frame.get(),
+            camera.matrix,
+            camera.distorsion_coefficients,
+            rotation.to_rodrigues(),
+            translation.as_array(),
+            axes_length,
         )
 
 
 def _detect_marker_corners(
-    frame: np.ndarray, charuco: Charuco
+    frame: Frame, charuco: Charuco
 ) -> tuple[list[np.ndarray], np.ndarray, np.ndarray, np.ndarray] | None:
     """
     Detect markers and ChArUco corners in the given image.
     """
-    corners, ids = _detect_markers(frame, charuco)
+    grayscale_frame = frame.get(grayscale=True)
+    corners, ids = _detect_markers(grayscale_frame, charuco)
     if not corners or ids is None:
         return None
 
     # Read chessboard corners between markers
     corner_counts, charuco_corners, charuco_ids = (
-        cv2.aruco.interpolateCornersCharuco(corners, ids, frame, charuco._board)
+        cv2.aruco.interpolateCornersCharuco(
+            corners, ids, grayscale_frame, charuco._board
+        )
     )
     if corner_counts == 0:
         return None

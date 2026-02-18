@@ -14,7 +14,7 @@
       "cwd": "${workspaceFolder}/run/",
       "env": {
         "PYTHONPATH": "${workspaceFolder}",
-        "CHARUCO_PARAMETERS": "[{\"horizontal_squares_count\":7,\"vertical_squares_count\":5,\"square_len\":0.04,\"marker_len\":0.025,\"normalized_px_count\":2200,\"margin_px_count\":0,\"seed\":42},{\"horizontal_squares_count\":7,\"vertical_squares_count\":5,\"square_len\":0.04,\"marker_len\":0.025,\"normalized_px_count\":2200,\"margin_px_count\":0,\"seed\":24}]",
+        "CHARUCO_PARAMETERS": "[{\"horizontal_squares_count\":4,\"vertical_squares_count\":6,\"square_len\":0.018,\"marker_len\":0.014,\"resolution\":\"DPI_300\",\"margin_px_count\":0,\"seed\":42},{\"horizontal_squares_count\":4,\"vertical_squares_count\":6,\"square_len\":0.018,\"marker_len\":0.014,\"resolution\":\"DPI_300\",\"margin_px_count\":0,\"seed\":24}]",
       }
     },
     {
@@ -27,8 +27,11 @@
       "cwd": "${workspaceFolder}/run/",
       "env": {
         "PYTHONPATH": "${workspaceFolder}",
-        "CHARUCOS": "charuco_7x5_24,charuco_7x5_42",
-        "WITH_GUI": "false", // Set to "true" to enable GUI or "false" to disable it
+        "CHARUCOS": "charuco_4x6_24,charuco_4x6_42",
+        "DATA_TYPE": "video", // "simulated", "video", or "photo" 
+        "WITH_GUI": "true", // Set to "true" to enable GUI or "false" to disable it. This only works when DATA_TYPE is set to "simulated" or "video". If DATA_TYPE is set to "image", the GUI will be disabled regardless of the value of this variable.
+        "RECORD_VIDEO": "false", // Set to "true" to enable video recording or "false" to disable it. This only works when DATA_TYPE is set to "simulated" or "video".
+        "RECORD_PATH": "recording/output.mp4",  // Path where the recorded video will be saved. This only works when RECORD_VIDEO is set to "true".
       }
     },
   ]

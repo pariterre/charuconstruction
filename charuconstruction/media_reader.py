@@ -41,20 +41,22 @@ class MediaReader(ABC):
 
 
 class ImageReader(MediaReader):
-    def __init__(self, image_path: str):
-        self._image_path = image_path
-        self._image = cv2.imread(self._image_path)
-        self._first = True
+    def __init__(self, image_path: str | Iterable[str]):
+        self._image_path = (
+            (image_path,) if isinstance(image_path, str) else image_path
+        )
+        self._index = 0
         super().__init__()
 
     def destroy(self):
         pass
 
     def _read_frame(self):
-        if not self._first:
+        if self._index >= len(self._image_path):
             return None
-        self._first = False
-        return Frame(self._image.copy())
+        image = cv2.imread(self._image_path[self._index])
+        self._index += 1
+        return Frame(image)
 
 
 class VideoReader(MediaReader):

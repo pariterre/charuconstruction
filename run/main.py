@@ -4,6 +4,8 @@ from pathlib import Path
 from charuconstruction import (
     Charuco,
     CharucoMockReader,
+    ImageReader,
+    VideoReader,
     Frame,
     Camera,
     Transformation,
@@ -30,13 +32,13 @@ def simulate_reader(
         frame_count = 50
         for i in range(frame_count):
             for j in range(len(charuco_boards)):
-                base_translation = -0.4 if j == 0 else 0.4
+                base_translation = -0.6 if j == 0 else 0.6
                 translation = i * 0.01 * (1 if j == 0 else -1) * 0
                 rotation = i * 1 * (1 if j == 0 else -1)
                 transformations[charuco_boards[j]].append(
                     Transformation(
                         translation=TranslationVector(
-                            base_translation + translation, 0, 1.5
+                            base_translation + translation, 0, 2.5
                         ),
                         rotation=RotationMatrix.from_euler(
                             Vector3(rotation, rotation, rotation),
@@ -48,32 +50,72 @@ def simulate_reader(
 
     # Detect markers for each Charuco board at each frame
     return CharucoMockReader(
-        boards=charuco_boards,
-        transformations=transformations,
-        camera=camera,
+        boards=charuco_boards, transformations=transformations, camera=camera
     )
 
 
 def main():
     # Load the material used for the experiment
-    camera = Camera.default_iphone_camera()
     charuco_boards: list[Charuco] = []
     for folder_name in os.environ["CHARUCOS"].split(","):
         charuco_boards.append(Charuco.load(Path(folder_name)))
 
     # Simulate a reader (since we don't have real media for now)
-    reader = simulate_reader(
-        camera, charuco_boards, use_gui=os.environ.get("WITH_GUI") == "true"
-    )
+    data_type = os.environ["DATA_TYPE"]
+    if data_type == "simulated":
+        # camera = Camera.generic_iphone_camera()
+        camera = Camera.pixel2_camera(use_video_parameters=True)
+        reader = simulate_reader(
+            camera, charuco_boards, use_gui=os.environ.get("WITH_GUI") == "true"
+        )
+        automatic_frame = reader.with_gui
+    elif data_type == "video":
+        camera = Camera.pixel2_camera(
+            use_video_parameters=True, is_vertical=False
+        )
+        reader = VideoReader(video_path=Path("data/PXL_20260218_211336454.mp4"))
+        automatic_frame = True
+    elif data_type == "photo":
+        camera = Camera.pixel2_camera(
+            use_video_parameters=False, is_vertical=True
+        )
+        reader = ImageReader(
+            image_path=[
+                Path("data/PXL_20260218_211354959.jpg"),
+                Path("data/PXL_20260218_211357461.jpg"),
+                Path("data/PXL_20260218_211359246.jpg"),
+            ]
+        )
+        automatic_frame = False
+    else:
+        raise ValueError(
+            f"Invalid DATA_TYPE: {data_type}. Must be 'simulated', 'video', or 'photo'."
+        )
+
+    should_record_video = os.environ.get("RECORD_VIDEO") == "true"
+    if should_record_video:
+        video_save_path = Path(os.environ.get("RECORD_PATH"))
+        if video_save_path is None:
+            raise ValueError(
+                "RECORD_PATH environment variable must be set when RECORD_VIDEO is true."
+            )
+        video_save_path.parent.mkdir(parents=True, exist_ok=True)
+        video_frame = None
 
     is_visible = False
     initial_guess = {}
     errors: dict[Charuco, list[np.ndarray]] = {}
+
     for frame in reader:
+        if video_frame is None and should_record_video:
+            video_frame = frame
+            video_frame.start_recording(video_save_path)
+
         frame_results = {}
         for charuco in charuco_boards:
             initial_guesses = initial_guess.get(charuco, (None, None))
             translation_initial_guess, rotation_initial_guess = initial_guesses
+
             frame_results[charuco] = charuco.detect(
                 frame=frame,
                 translation_initial_guess=translation_initial_guess,
@@ -86,26 +128,28 @@ def main():
                 initial_guess[charuco] = frame_results[charuco]
 
         # Compute the reconstruction error in degrees
-        for charuco in charuco_boards:
-            _, rotation = frame_results[charuco]
+        if isinstance(reader, CharucoMockReader):
+            for charuco in charuco_boards:
+                if charuco not in errors:
+                    errors[charuco] = []
 
-            if rotation is None:
-                errors[charuco].append(np.ndarray((3, 1)) * np.nan)
-                continue
-            rotation: RotationMatrix
+                _, rotation = frame_results[charuco]
 
-            sequence = RotationMatrix.Sequence.ZYX
-            true_values = (
-                reader.transformations(charuco)
-                .rotation.to_euler(sequence=sequence, degrees=True)
-                .as_array()
-            )
-            reconstructed_values = rotation.to_euler(
-                sequence=sequence, degrees=True
-            ).as_array()
-            if charuco not in errors:
-                errors[charuco] = []
-            errors[charuco].append(true_values - reconstructed_values)
+                if rotation is None:
+                    errors[charuco].append(np.ndarray((3, 1)) * np.nan)
+                    continue
+                rotation: RotationMatrix
+
+                sequence = RotationMatrix.Sequence.ZYX
+                true_values = (
+                    reader.transformations(charuco)
+                    .rotation.to_euler(sequence=sequence, degrees=True)
+                    .as_array()
+                )
+                reconstructed_values = rotation.to_euler(
+                    sequence=sequence, degrees=True
+                ).as_array()
+                errors[charuco].append(true_values - reconstructed_values)
 
         # Show the estimated pose for each board on the current frame
         frame_to_draw = Frame(frame.get().copy())
@@ -119,18 +163,29 @@ def main():
                     camera=camera,
                     translation=translation,
                     rotation=rotation,
-                    axes_length=1,
+                    axes_length=0.1,
                 )
 
+        if should_record_video:
+            video_frame.frame_from(frame_to_draw)
+            video_frame.add_frame_to_recording()
+
         is_visible = frame_to_draw.show(
-            wait_time=1 if reader.with_gui else None
+            wait_time=(1 if automatic_frame else None)
         )
         if not is_visible:
             break
 
-    if not reader.with_gui and is_visible:
+    if (
+        not automatic_frame
+        and is_visible
+        and isinstance(reader, CharucoMockReader)
+    ):
         frame_to_draw.show(wait_time=None)
 
+    if should_record_video:
+        video_frame.stop_recording()
+        print(f"Video saved to {video_save_path}")
     reader.destroy()
 
     # Print the mean error for each Charuco board

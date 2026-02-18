@@ -173,5 +173,7 @@ cython_debug/
 # Working directory
 sandbox/
 run/charuco_*/
+run/data
+run/recording
 *.png
 *.xcf

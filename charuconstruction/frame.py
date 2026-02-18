@@ -7,6 +7,13 @@ class Frame:
         self._frame = frame
         self._grayscale_frame = self._ensure_grayscale()
 
+        self._video_writer = None
+
+    def frame_from(self, new_frame: "Frame"):
+        """Overwrite the current frame with a new one."""
+        self._frame = new_frame._frame.copy()
+        self._grayscale_frame = new_frame._grayscale_frame.copy()
+
     def get(self, grayscale: bool = False) -> np.ndarray:
         """
         Get the underlying image array.
@@ -75,3 +82,25 @@ class Frame:
             return cv2.cvtColor(self._frame, cv2.COLOR_BGR2GRAY)
         else:
             raise ValueError("Invalid image shape")
+
+    def start_recording(self, output_path: str, fps: int = 30):
+        """Start recording the frame to a video file."""
+        if self._video_writer is not None:
+            raise RuntimeError("Recording already in progress")
+
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        h, w = self._frame.shape[:2]
+        self._video_writer = cv2.VideoWriter(output_path, fourcc, fps, (w, h))
+
+    def add_frame_to_recording(self):
+        """Add the current frame to the recording."""
+        if self._video_writer is None:
+            raise RuntimeError("Recording not started")
+        self._video_writer.write(self._frame)
+
+    def stop_recording(self):
+        """Stop recording and release the video writer."""
+        if self._video_writer is None:
+            raise RuntimeError("Recording not started")
+        self._video_writer.release()
+        self._video_writer = None

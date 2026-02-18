@@ -9,6 +9,7 @@ import numpy as np
 from .camera import Camera
 from .media_reader import Frame
 from .math import TranslationVector, RotationMatrix
+from .resolution import Resolution
 
 
 class Charuco:
@@ -18,7 +19,7 @@ class Charuco:
         horizontal_squares_count: int,
         square_len: float,
         marker_len: float,
-        normalized_px_count: int,
+        resolution: Resolution | str,
         margin_px_count: int,
         aruco_dict: int = cv2.aruco.DICT_7X7_1000,
         seed: int = None,
@@ -31,9 +32,9 @@ class Charuco:
             horizontal_squares_count (int): Number of squares in the horizontal direction.
             square_len (float): Length of the squares in meters.
             marker_len (float): Length of the ArUco markers in meters (cannot be greater than square_len).
-            normalized_px_count (int): Total length of the normalized page (i.e. the number of pixels
-                of a 1 meter object at one meter) in pixels when generating the board image.
-                When simulating the board, this MUST be equal to the focal length in pixels for a camera capturing the board at 1 meter.
+            resolution (Resolution | str): The number of pixels in one meter on the printed page.
+                When simulating the board, this MUST be equal to the focal length.
+                If a string is provided, it should be the name of a Resolution enum member (e.g., "DPI_100").
             margin_px_count (int): Margin size in pixels when generating the board image.
             aruco_dict (int): Predefined ArUco dictionary to use.
             seed (int): Seed for random number generator (will determine the order of aruco markers).
@@ -49,7 +50,11 @@ class Charuco:
         self._square_len = square_len
         self._marker_len = marker_len
         self._margin_px_count = margin_px_count
-        self._normalized_px_count = normalized_px_count
+        self._resolution = (
+            resolution
+            if isinstance(resolution, Resolution)
+            else Resolution.from_serialized(resolution)
+        )
 
         self._predefined_aruco_dict = aruco_dict
         self._dictionary = cv2.aruco.getPredefinedDictionary(
@@ -72,15 +77,15 @@ class Charuco:
         )
 
         if self._horz_count >= self._vert_count:
-            page_len = int(
-                self._normalized_px_count * self._square_len * self._horz_count
+            board_len = int(
+                self._resolution.value * self._square_len * self._horz_count
             )
-            img_len = (page_len, int(page_len * self.square_ratio))
+            img_len = (board_len, int(board_len * self.square_ratio))
         else:
-            page_len = int(
-                self._normalized_px_count * self._square_len * self._vert_count
+            board_len = int(
+                self._resolution.value * self._square_len * self._vert_count
             )
-            img_len = (int(page_len / self.square_ratio), page_len)
+            img_len = (int(board_len / self.square_ratio), board_len)
         self._board_image: np.ndarray = cv2.aruco.CharucoBoard.generateImage(
             self._board,
             outSize=img_len,
@@ -203,7 +208,7 @@ class Charuco:
             "horizontal_squares_count": self._horz_count,
             "square_len": self._square_len,
             "marker_len": self._marker_len,
-            "normalized_px_count": self._normalized_px_count,
+            "resolution": self._resolution.serialized,
             "margin_px_count": self._margin_px_count,
             "aruco_dict": self._predefined_aruco_dict,
             "seed": self._random_seed,

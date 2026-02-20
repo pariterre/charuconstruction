@@ -1,5 +1,5 @@
 from .version import __version__
-from .camera import Camera
+from .camera import Camera, CameraModel
 from .charuco import Charuco, CharucoWithDynamicStates
 from .frame import Frame
 from .math import TranslationVector, RotationMatrix, Transformation, Vector3
@@ -8,6 +8,7 @@ from .media_reader import ImageReader, VideoReader, CharucoMockReader
 __all__ = [
     "__version__",
     Camera.__name__,
+    CameraModel.__name__,
     Charuco.__name__,
     CharucoWithDynamicStates.__name__,
     CharucoMockReader.__name__,

@@ -2,17 +2,17 @@ from enum import Enum
 
 
 class Resolution(Enum):
-    DPI_100 = 4724  # 100 DPI corresponds to 4724 pixels per meter
-    DPI_200 = 7874  # 200 DPI corresponds to 7874 pixels per meter
-    DPI_300 = 11811  # 300 DPI corresponds to 11811 pixels per meter
+    DPI_100 = "dpi_100"
+    DPI_200 = "dpi_200"
+    DPI_300 = "dpi_300"
 
     @property
-    def serialized(self) -> str:
-        return self.name
-
-    @classmethod
-    def from_serialized(cls, name: str) -> "Resolution":
-        for member in cls:
-            if member.name == name:
-                return member
-        raise ValueError(f"No matching Resolution for name: {name}")
+    def pixels_per_meter(self) -> int:
+        if self == Resolution.DPI_100:
+            return 4724
+        elif self == Resolution.DPI_200:
+            return 7874
+        elif self == Resolution.DPI_300:
+            return 11811
+        else:
+            raise ValueError(f"Unsupported resolution: {self}")

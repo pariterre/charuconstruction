@@ -9,6 +9,7 @@ from charuconstruction import (
     VideoReader,
     Frame,
     Camera,
+    CameraModel,
     Transformation,
     TranslationVector,
     RotationMatrix,
@@ -69,9 +70,15 @@ def main():
 
     # Simulate a reader (since we don't have real media for now)
     data_type = os.environ.get("DATA_TYPE", "simulated").lower()
+    camera_model = os.environ.get("CAMERA_MODEL")
+    if camera_model is None:
+        raise ValueError("CAMERA_MODEL environment variable must be set.")
+    camera_model = CameraModel(camera_model.lower())
+
     if data_type == "simulated":
-        # camera = Camera.generic_iphone_camera()
-        camera = Camera.pixel2_camera(use_video_parameters=True)
+        camera = camera_model.to_camera(
+            use_video_parameters=True, is_vertical=False
+        )
         reader = simulate_reader(
             camera,
             charuco_boards,
@@ -79,26 +86,32 @@ def main():
         )
         automatic_frame = reader.with_gui
     elif data_type == "video":
-        camera = Camera.pixel2_camera(
+        camera = camera_model.to_camera(
             use_video_parameters=True, is_vertical=False
         )
-        reader = VideoReader(video_path=Path("data/PXL_20260218_211336454.mp4"))
+        video_path = os.environ["VIDEO_PATH"] = os.environ.get("VIDEO_PATH")
+        if video_path is None:
+            raise ValueError(
+                "VIDEO_PATH environment variable must be set for video data type."
+            )
+        reader = VideoReader(video_path=Path(video_path))
         automatic_frame = True
-    elif data_type == "photo":
-        camera = Camera.pixel2_camera(
+    elif data_type == "photos":
+        camera = camera_model.to_camera(
             use_video_parameters=False, is_vertical=True
         )
+        photos_path = os.environ["PHOTOS_PATH"] = os.environ.get("PHOTOS_PATH")
+        if photos_path is None:
+            raise ValueError(
+                "PHOTOS_PATH environment variable must be set for photos data type."
+            )
         reader = ImageReader(
-            image_path=[
-                Path("data/PXL_20260218_211354959.jpg"),
-                Path("data/PXL_20260218_211357461.jpg"),
-                Path("data/PXL_20260218_211359246.jpg"),
-            ]
+            image_path=[Path(p) for p in photos_path.split(",")]
         )
         automatic_frame = False
     else:
         raise ValueError(
-            f"Invalid DATA_TYPE: {data_type}. Must be 'simulated', 'video', or 'photo'."
+            f"Invalid DATA_TYPE: {data_type}. Must be 'simulated', 'video', or 'photos'."
         )
 
     should_record_video = (

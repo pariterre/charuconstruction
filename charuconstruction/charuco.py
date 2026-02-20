@@ -49,7 +49,7 @@ class Charuco:
         self._resolution = (
             resolution
             if isinstance(resolution, Resolution)
-            else Resolution.from_serialized(resolution)
+            else Resolution(resolution.lower())
         )
 
         self._predefined_aruco_dict = aruco_dict
@@ -74,12 +74,16 @@ class Charuco:
 
         if self._horz_count >= self._vert_count:
             board_len = int(
-                self._resolution.value * self._square_len * self._horz_count
+                self._resolution.pixels_per_meter
+                * self._square_len
+                * self._horz_count
             )
             img_len = (board_len, int(board_len * self.square_ratio))
         else:
             board_len = int(
-                self._resolution.value * self._square_len * self._vert_count
+                self._resolution.pixels_per_meter
+                * self._square_len
+                * self._vert_count
             )
             img_len = (int(board_len / self.square_ratio), board_len)
         self._board_image: np.ndarray = cv2.aruco.CharucoBoard.generateImage(
@@ -202,7 +206,7 @@ class Charuco:
             "horizontal_squares_count": self._horz_count,
             "square_len": self._square_len,
             "marker_len": self._marker_len,
-            "resolution": self._resolution.serialized,
+            "resolution": self._resolution.name,
             "aruco_dict": self._predefined_aruco_dict,
             "seed": self._random_seed,
         }

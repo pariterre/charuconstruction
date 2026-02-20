@@ -1,6 +1,20 @@
 from dataclasses import dataclass
+from enum import Enum
 
 import numpy as np
+
+
+class CameraModel(Enum):
+    IPHONE_GENERIC = "iphone_generic"
+    PIXEL2 = "pixel2"
+
+    def to_camera(self, **kwargs) -> Camera:
+        if self == CameraModel.IPHONE_GENERIC:
+            return Camera.iphone_camera_generic(**kwargs)
+        elif self == CameraModel.PIXEL2:
+            return Camera.pixel2_camera(**kwargs)
+        else:
+            raise ValueError(f"Unsupported camera model: {self}")
 
 
 @dataclass
@@ -23,11 +37,13 @@ class Camera:
     distorsion_coefficients: np.ndarray
 
     @classmethod
-    def generic_iphone_camera(
+    def iphone_camera_generic(
         cls,
         focal_length: float = 2200,
         sensor_width: float = 3000.0,
         sensor_height: float = 1800.0,
+        use_video_parameters: bool = False,
+        is_vertical: bool = False,
     ) -> "Camera":
         return cls(
             focal_length=focal_length,

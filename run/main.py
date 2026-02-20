@@ -3,6 +3,7 @@ from pathlib import Path
 
 from charuconstruction import (
     Charuco,
+    CharucoWithDynamicStates,
     CharucoMockReader,
     ImageReader,
     VideoReader,
@@ -14,6 +15,8 @@ from charuconstruction import (
     Vector3,
 )
 import numpy as np
+
+# TODO Add force sensor
 
 
 def simulate_reader(
@@ -58,7 +61,11 @@ def main():
     # Load the material used for the experiment
     charuco_boards: list[Charuco] = []
     for folder_name in os.environ["CHARUCOS"].split(","):
-        charuco_boards.append(Charuco.load(Path(folder_name)))
+        charuco_boards.append(
+            CharucoWithDynamicStates.from_charuco(
+                Charuco.load(Path(folder_name))
+            )
+        )
 
     # Simulate a reader (since we don't have real media for now)
     data_type = os.environ.get("DATA_TYPE", "simulated").lower()
@@ -107,7 +114,6 @@ def main():
         video_frame = None
 
     is_visible = False
-    initial_guess = {}
     errors: dict[Charuco, list[np.ndarray]] = {}
 
     for frame in reader:
@@ -115,21 +121,11 @@ def main():
             video_frame = frame
             video_frame.start_recording(video_save_path)
 
-        frame_results = {}
+        frame_results: dict[
+            Charuco, tuple[TranslationVector | None, RotationMatrix | None]
+        ] = {}
         for charuco in charuco_boards:
-            initial_guesses = initial_guess.get(charuco, (None, None))
-            translation_initial_guess, rotation_initial_guess = initial_guesses
-
-            frame_results[charuco] = charuco.detect(
-                frame=frame,
-                translation_initial_guess=translation_initial_guess,
-                rotation_initial_guess=rotation_initial_guess,
-                camera=camera,
-            )
-
-            # Prepare the initial guess for the next frame
-            if None not in frame_results[charuco]:
-                initial_guess[charuco] = frame_results[charuco]
+            frame_results[charuco] = charuco.detect(frame=frame, camera=camera)
 
         # Compute the reconstruction error in degrees
         if isinstance(reader, CharucoMockReader):
@@ -138,11 +134,9 @@ def main():
                     errors[charuco] = []
 
                 _, rotation = frame_results[charuco]
-
                 if rotation is None:
                     errors[charuco].append(np.ndarray((3, 1)) * np.nan)
                     continue
-                rotation: RotationMatrix
 
                 sequence = RotationMatrix.Sequence.ZYX
                 true_values = (

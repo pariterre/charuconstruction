@@ -117,7 +117,10 @@ class CharucoMockReader(MediaReader):
         if self.with_gui:
             for board in self._boards:
                 ctrl = f"Controle {board}"
-                cv2.destroyWindow(ctrl)
+                try:
+                    cv2.destroyWindow(ctrl)
+                except:
+                    pass
 
     @property
     def with_gui(self) -> bool:

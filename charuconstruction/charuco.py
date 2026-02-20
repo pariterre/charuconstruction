@@ -427,3 +427,42 @@ def _draw_detected_corners_charuco_own(img, corners, ids):
             thickness=rect_thickness,
         )
         cv2.putText(img, id_text, id_coord, id_font, id_scale, id_color)
+
+
+class CharucoWithDynamicStates(Charuco):
+    def __init__(self, *args, **kwargs):
+        """
+        A Charuco board that keeps track of the last known pose and uses it as
+        an initial guess for the next detection.
+        """
+        super().__init__(*args, **kwargs)
+        self._current_translation = TranslationVector.zero()
+        self._current_rotation = RotationMatrix.identity()
+
+    def detect(
+        self, frame: Frame, camera: Camera
+    ) -> tuple[TranslationVector | None, RotationMatrix | None]:
+        results = super().detect(
+            frame=frame,
+            camera=camera,
+            translation_initial_guess=self._current_translation,
+            rotation_initial_guess=self._current_rotation,
+        )
+        if results == (None, None):
+            return None, None
+
+        self._current_translation, self._current_rotation = results
+        return results
+
+    @classmethod
+    def from_charuco(cls, charuco: "Charuco") -> "CharucoWithDynamicStates":
+        """
+        Create a CharucoWithDynamicStates instance from an existing Charuco instance.
+
+        Parameters:
+            charuco (Charuco): The Charuco instance to copy.
+
+        Returns:
+            CharucoWithDynamicStates: A new instance with dynamic state tracking.
+        """
+        return cls(**charuco.serialize())

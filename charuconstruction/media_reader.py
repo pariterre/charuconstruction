@@ -75,6 +75,11 @@ class VideoReader(MediaReader):
         return Frame(frame)
 
 
+class LiveVideoReader(MediaReader):
+    # TODO
+    pass
+
+
 class CharucoMockReader(MediaReader):
     def __init__(
         self,

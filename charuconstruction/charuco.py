@@ -244,7 +244,7 @@ class Charuco:
             else np.zeros((3, 1))
         )
 
-        ret, rotation, translation = cv2.aruco.estimatePoseCharucoBoard(
+        was_found, rotation, translation = cv2.aruco.estimatePoseCharucoBoard(
             charuco_corners,
             charuco_ids,
             self._board,
@@ -253,9 +253,27 @@ class Charuco:
             rotation_initial_guess,
             translation_initial_guess,
         )
+        if not was_found:
+            return None, None
+
+        # Reproject the corners to compute the reprojection error and filter out bad detections
+        reprojected_corners, _ = cv2.projectPoints(
+            self._board.getChessboardCorners()[charuco_ids.flatten()],
+            rvec=rotation,
+            tvec=translation,
+            cameraMatrix=camera.matrix,
+            distCoeffs=camera.distorsion_coefficients,
+        )
+        error = np.mean(
+            np.linalg.norm(reprojected_corners - charuco_corners, axis=2)
+        )
+        if error > 5.0:
+            return None, None
+
+        # If we get here, the charuco is properly recognized
         return (
-            TranslationVector.from_array(translation) if ret > 0 else None,
-            RotationMatrix(cv2.Rodrigues(rotation)[0]) if ret > 0 else None,
+            TranslationVector.from_array(translation),
+            RotationMatrix(cv2.Rodrigues(rotation)[0]),
         )
 
     def draw_aruco_markers(self, frame: Frame) -> None:

@@ -111,7 +111,7 @@ def main():
     errors: dict[Charuco, list[np.ndarray]] = {}
 
     for frame in reader:
-        if video_frame is None and should_record_video:
+        if should_record_video and video_frame is None:
             video_frame = frame
             video_frame.start_recording(video_save_path)
 

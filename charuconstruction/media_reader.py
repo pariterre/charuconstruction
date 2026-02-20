@@ -76,8 +76,22 @@ class VideoReader(MediaReader):
 
 
 class LiveVideoReader(MediaReader):
-    # TODO
-    pass
+    def __init__(self, camera_ip: str, camera_port: int):
+        self._camera_ip = camera_ip
+        self._camera_port = camera_port
+        self._cap = cv2.VideoCapture(
+            f"rtsp://{self._camera_ip}:{self._camera_port}"
+        )
+        super().__init__()
+
+    def destroy(self):
+        self._cap.release()
+
+    def _read_frame(self):
+        ret, frame = self._cap.read()
+        if not ret:
+            return None
+        return Frame(frame)
 
 
 class CharucoMockReader(MediaReader):

@@ -39,14 +39,15 @@
       "cwd": "${workspaceFolder}/run/",
       "env": {
         "PYTHONPATH": "${workspaceFolder}",
-        "CAMERA_MODEL": "<CAMERA_MODEL>",             // The CameraModel as a string, e.g. "pixel2" (see 'camera.py')
-        "CHARUCOS": "<NAME_OF_CHARUCOS>",             // Comma-separated list of charuco board names to use (created with create_board.py). For example: "charuco_4x6_24,charuco_4x6_42"
-        "DATA_TYPE": "<[simulated] | video | photos>",
-        "PHOTOS_PATH": "<PATH_TO_PHOTO_FILES>"        // Comma-separated list for photos paths. Is ignored if DATA_TYPE =/= photos
-        "VIDEO_PATH": "<PATH_TO_VIDEO_FILE>"          // File path to the video. Is ignored if DATA_TYPE =/= video
-        "WITH_GUI": "<[true] | false>",               // This only works when DATA_TYPE is set to "simulated".
-        "RECORD_VIDEO": "<true | [false] >",          // "true" to enable video recording, "false" to disable it.
-        "RECORD_PATH": "<PATH_TO_SAVE_VIDEO>",        // Mandatory if RECORD_VIDEO is set to "true", ignored otherwise.
+        "DATA_TYPE": "<[simulated] | video | photos | live>",
+        "CAMERA_MODEL": "<CAMERA_MODEL>",       // The CameraModel as a string, e.g. "pixel2" (see 'camera.py')
+        "CHARUCOS": "<NAME_OF_CHARUCOS>",       // Comma-separated list of charuco board names to use (created with create_board.py). For example: "charuco_4x6_24,charuco_4x6_42"
+        "PHOTOS_PATH": "<PATH_TO_PHOTO_FILES>", // Comma-separated list for photos paths. Is ignored if DATA_TYPE =/= photos
+        "VIDEO_PATH": "<PATH_TO_VIDEO_FILE>",   // File path to the video. Is ignored if DATA_TYPE =/= video
+        "LIVE_IP": "<IP_ADDRESS:PORT>",         // The ip addres and port separated by a colon. Is ignored if DATA_TYPE =/= live
+        "WITH_GUI": "<[true] | false>",         // This only works when DATA_TYPE is set to "simulated".
+        "RECORD_VIDEO": "<true | [false] >",    // "true" to enable video recording, "false" to disable it.
+        "RECORD_PATH": "<PATH_TO_SAVE_VIDEO>",  // Mandatory if RECORD_VIDEO is set to "true", ignored otherwise.
       },
     },
   ]

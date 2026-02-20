@@ -7,6 +7,7 @@ from charuconstruction import (
     CharucoMockReader,
     ImageReader,
     VideoReader,
+    LiveVideoReader,
     Frame,
     Camera,
     CameraModel,
@@ -18,6 +19,9 @@ from charuconstruction import (
 import numpy as np
 
 # TODO Add force sensor
+# TODO Add capability to detect joint angles (calibrate first?)
+# TODO Add capability to see if joint angles are on target
+# TODO Add capability to graph force against joint angles (phase diagram?)
 
 
 def simulate_reader(
@@ -109,9 +113,24 @@ def main():
             image_path=[Path(p) for p in photos_path.split(",")]
         )
         automatic_frame = False
+    elif data_type == "live":
+        camera = camera_model.to_camera(
+            use_video_parameters=True, is_vertical=False
+        )
+        live_ip = os.environ["LIVE_IP"] = os.environ.get("LIVE_IP")
+        if live_ip is None:
+            raise ValueError(
+                "LIVE_IP environment variable must be set for live data type."
+            )
+        live_ip_parts = live_ip.split(":")
+        if len(live_ip_parts) != 2:
+            raise ValueError("LIVE_IP must be in the format 'IP_ADDRESS:PORT'.")
+        camera_ip, camera_port = live_ip_parts[0], int(live_ip_parts[1])
+        reader = LiveVideoReader(camera_ip=camera_ip, camera_port=camera_port)
+        automatic_frame = True
     else:
         raise ValueError(
-            f"Invalid DATA_TYPE: {data_type}. Must be 'simulated', 'video', or 'photos'."
+            f"Invalid DATA_TYPE: {data_type}. Must be 'simulated', 'video', 'photos', or 'live'."
         )
 
     should_record_video = (

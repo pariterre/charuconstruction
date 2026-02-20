@@ -19,6 +19,7 @@ from charuconstruction import (
 import numpy as np
 
 # TODO Add force sensor
+# TODO Move the camera loop to a separate thread
 # TODO Add capability to detect joint angles (calibrate first?)
 # TODO Add capability to see if joint angles are on target
 # TODO Add capability to graph force against joint angles (phase diagram?)
@@ -93,7 +94,7 @@ def main():
         camera = camera_model.to_camera(
             use_video_parameters=True, is_vertical=False
         )
-        video_path = os.environ["VIDEO_PATH"] = os.environ.get("VIDEO_PATH")
+        video_path = os.environ.get("VIDEO_PATH")
         if video_path is None:
             raise ValueError(
                 "VIDEO_PATH environment variable must be set for video data type."
@@ -104,7 +105,7 @@ def main():
         camera = camera_model.to_camera(
             use_video_parameters=False, is_vertical=True
         )
-        photos_path = os.environ["PHOTOS_PATH"] = os.environ.get("PHOTOS_PATH")
+        photos_path = os.environ.get("PHOTOS_PATH")
         if photos_path is None:
             raise ValueError(
                 "PHOTOS_PATH environment variable must be set for photos data type."
@@ -117,16 +118,12 @@ def main():
         camera = camera_model.to_camera(
             use_video_parameters=True, is_vertical=False
         )
-        live_ip = os.environ["LIVE_IP"] = os.environ.get("LIVE_IP")
-        if live_ip is None:
+        live_uri = os.environ.get("LIVE_URI")
+        if live_uri is None:
             raise ValueError(
-                "LIVE_IP environment variable must be set for live data type."
+                "LIVE_URI environment variable must be set for live data type."
             )
-        live_ip_parts = live_ip.split(":")
-        if len(live_ip_parts) != 2:
-            raise ValueError("LIVE_IP must be in the format 'IP_ADDRESS:PORT'.")
-        camera_ip, camera_port = live_ip_parts[0], int(live_ip_parts[1])
-        reader = LiveVideoReader(camera_ip=camera_ip, camera_port=camera_port)
+        reader = LiveVideoReader(live_uri=live_uri)
         automatic_frame = True
     else:
         raise ValueError(

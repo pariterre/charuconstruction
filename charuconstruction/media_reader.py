@@ -76,12 +76,9 @@ class VideoReader(MediaReader):
 
 
 class LiveVideoReader(MediaReader):
-    def __init__(self, camera_ip: str, camera_port: int):
-        self._camera_ip = camera_ip
-        self._camera_port = camera_port
-        self._cap = cv2.VideoCapture(
-            f"rtsp://{self._camera_ip}:{self._camera_port}"
-        )
+    def __init__(self, live_uri: str):
+        self._live_uri = live_uri
+        self._cap = cv2.VideoCapture(self._live_uri)
         super().__init__()
 
     def destroy(self):

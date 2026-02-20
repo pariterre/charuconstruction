@@ -114,7 +114,10 @@ def main():
         video_frame = None
 
     is_visible = False
-    errors: dict[Charuco, list[np.ndarray]] = {}
+
+    should_compute_error = isinstance(reader, CharucoMockReader)
+    if should_compute_error:
+        errors: dict[Charuco, list[np.ndarray]] = {}
 
     for frame in reader:
         if should_record_video and video_frame is None:
@@ -128,7 +131,7 @@ def main():
             frame_results[charuco] = charuco.detect(frame=frame, camera=camera)
 
         # Compute the reconstruction error in degrees
-        if isinstance(reader, CharucoMockReader):
+        if should_compute_error:
             for charuco in charuco_boards:
                 if charuco not in errors:
                     errors[charuco] = []
@@ -153,16 +156,17 @@ def main():
         frame_to_draw = Frame(frame.get().copy())
         for charuco in charuco_boards:
             translation, rotation = frame_results[charuco]
+            if translation is None or rotation is None:
+                continue
 
-            if translation is not None and rotation is not None:
-                charuco.draw_aruco_markers(frame_to_draw)
-                charuco.draw_estimated_pose_axes(
-                    frame=frame_to_draw,
-                    camera=camera,
-                    translation=translation,
-                    rotation=rotation,
-                    axes_length=0.1,
-                )
+            charuco.draw_aruco_markers(frame_to_draw)
+            charuco.draw_estimated_pose_axes(
+                frame=frame_to_draw,
+                camera=camera,
+                translation=translation,
+                rotation=rotation,
+                axes_length=0.1,
+            )
 
         if should_record_video:
             video_frame.frame_from(frame_to_draw)
@@ -175,9 +179,9 @@ def main():
             break
 
     if (
-        not automatic_frame
+        isinstance(reader, CharucoMockReader)
+        and not automatic_frame
         and is_visible
-        and isinstance(reader, CharucoMockReader)
     ):
         frame_to_draw.show(wait_time=None)
 
@@ -187,18 +191,19 @@ def main():
     reader.destroy()
 
     # Print the mean error for each Charuco board
-    for charuco, error_list in errors.items():
-        error_array = np.array(error_list).squeeze()
-        if not np.isfinite(error_array).any():
-            continue
-        mean_error = np.nanmean(np.abs(error_array), axis=0)
-        std_error = np.nanstd(error_array, axis=0)
-        print(
-            f"Mean reconstruction error for Charuco board "
-            f"{charuco.horizontal_squares_count}x{charuco.vertical_squares_count} "
-            f"with seed {charuco.random_seed}: "
-            f"Roll: {mean_error[0]:.2f}° ± {std_error[0]:.2f}°, Pitch: {mean_error[1]:.2f}° ± {std_error[1]:.2f}°, Yaw: {mean_error[2]:.2f}° ± {std_error[2]:.2f}°"
-        )
+    if should_compute_error:
+        for charuco, error_list in errors.items():
+            error_array = np.array(error_list).squeeze()
+            if not np.isfinite(error_array).any():
+                continue
+            mean_error = np.nanmean(np.abs(error_array), axis=0)
+            std_error = np.nanstd(error_array, axis=0)
+            print(
+                f"Mean reconstruction error for Charuco board "
+                f"{charuco.horizontal_squares_count}x{charuco.vertical_squares_count} "
+                f"with seed {charuco.random_seed}: "
+                f"Roll: {mean_error[0]:.2f}° ± {std_error[0]:.2f}°, Pitch: {mean_error[1]:.2f}° ± {std_error[1]:.2f}°, Yaw: {mean_error[2]:.2f}° ± {std_error[2]:.2f}°"
+            )
 
 
 if __name__ == "__main__":

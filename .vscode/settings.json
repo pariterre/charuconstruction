@@ -8,9 +8,12 @@
     "editor.formatOnSave": true,
     "editor.rulers": [ 80 ],
   },
-  "black-formatter.args": ["--line-length", "80"],
+  "black-formatter.args": [ "--line-length", "80" ],
   "[jsonc]": {
     "editor.tabSize": 2,
     "editor.detectIndentation": false,
-  }
+  },
+  "python-envs.defaultEnvManager": "ms-python.python:conda",
+  "python-envs.defaultPackageManager": "ms-python.python:conda",
+  "python-envs.pythonProjects": [ ]
 }

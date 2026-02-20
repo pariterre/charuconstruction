@@ -177,3 +177,5 @@ run/data
 run/recording
 *.png
 *.xcf
+
+.vscode/launch.json

@@ -1,0 +1,50 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Create Board",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/run/create_board.py",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}/run/",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        // JSON list of the parameters used to create the charucos: 
+        // Due to launch.json limitations, this must be a single line string
+        //  [
+        //    // First charuco board parameters
+        //    {
+        //      "horizontal_squares_count":<INT>,
+        //      "vertical_squares_count":<INT>,
+        //      "square_len":<FLOAT>,             // In meters
+        //      "marker_len":<FLOAT>,             // In meters
+        //      "resolution":"<RESOLUTION_NAME>", // e.g. DPI_300 (See 'resolution.py')
+        //      "seed":<INT>,                     // The seed used to randomize the ArUco
+        //    },
+        //    // Second charuco board parameters
+        //    {...}
+        //  ]
+        "CHARUCO_PARAMETERS": "[<ALL_CHARUCOS_PARAMETERS_ON_A_SINGLE_LINE>]",
+      }
+    },
+    {
+      "name": "Main",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/run/main.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "cwd": "${workspaceFolder}/run/",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "CHARUCOS": "<NAME_OF_CHARUCOS>", // Comma-separated list of charuco board names to use (created with create_board.py). For example: "charuco_4x6_24,charuco_4x6_42"
+        "DATA_TYPE": "<[simulated] | video | photo>",
+        "WITH_GUI": "<[true] | false>", // This only works when DATA_TYPE is set to "simulated".
+        "RECORD_VIDEO": "<true | [false] >", // "true" to enable video recording, "false" to disable it.
+        "RECORD_PATH": "<PATH_TO_SAVE_VIDEO>", // Mandatory if RECORD_VIDEO is set to "true", ignored otherwise.
+      },
+    },
+  ]
+}

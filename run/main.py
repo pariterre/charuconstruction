@@ -61,12 +61,14 @@ def main():
         charuco_boards.append(Charuco.load(Path(folder_name)))
 
     # Simulate a reader (since we don't have real media for now)
-    data_type = os.environ["DATA_TYPE"]
+    data_type = os.environ.get("DATA_TYPE", "simulated").lower()
     if data_type == "simulated":
         # camera = Camera.generic_iphone_camera()
         camera = Camera.pixel2_camera(use_video_parameters=True)
         reader = simulate_reader(
-            camera, charuco_boards, use_gui=os.environ.get("WITH_GUI") == "true"
+            camera,
+            charuco_boards,
+            use_gui=os.environ.get("WITH_GUI", "true").lower() == "true",
         )
         automatic_frame = reader.with_gui
     elif data_type == "video":
@@ -92,7 +94,9 @@ def main():
             f"Invalid DATA_TYPE: {data_type}. Must be 'simulated', 'video', or 'photo'."
         )
 
-    should_record_video = os.environ.get("RECORD_VIDEO") == "true"
+    should_record_video = (
+        os.environ.get("RECORD_VIDEO", "false").lower() == "true"
+    )
     if should_record_video:
         video_save_path = Path(os.environ.get("RECORD_PATH"))
         if video_save_path is None:

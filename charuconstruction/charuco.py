@@ -20,7 +20,6 @@ class Charuco:
         square_len: float,
         marker_len: float,
         resolution: Resolution | str,
-        margin_px_count: int,
         aruco_dict: int = cv2.aruco.DICT_7X7_1000,
         seed: int = None,
     ):
@@ -32,10 +31,8 @@ class Charuco:
             horizontal_squares_count (int): Number of squares in the horizontal direction.
             square_len (float): Length of the squares in meters.
             marker_len (float): Length of the ArUco markers in meters (cannot be greater than square_len).
-            resolution (Resolution | str): The number of pixels in one meter on the printed page.
-                When simulating the board, this MUST be equal to the focal length.
+            resolution (Resolution | str): The number of pixels in one inch on the printed page.
                 If a string is provided, it should be the name of a Resolution enum member (e.g., "DPI_100").
-            margin_px_count (int): Margin size in pixels when generating the board image.
             aruco_dict (int): Predefined ArUco dictionary to use.
             seed (int): Seed for random number generator (will determine the order of aruco markers).
         """
@@ -49,7 +46,6 @@ class Charuco:
         self._horz_count = horizontal_squares_count
         self._square_len = square_len
         self._marker_len = marker_len
-        self._margin_px_count = margin_px_count
         self._resolution = (
             resolution
             if isinstance(resolution, Resolution)
@@ -87,9 +83,7 @@ class Charuco:
             )
             img_len = (int(board_len / self.square_ratio), board_len)
         self._board_image: np.ndarray = cv2.aruco.CharucoBoard.generateImage(
-            self._board,
-            outSize=img_len,
-            marginSize=self._margin_px_count,
+            self._board, outSize=img_len, marginSize=0
         )
 
     @property
@@ -209,7 +203,6 @@ class Charuco:
             "square_len": self._square_len,
             "marker_len": self._marker_len,
             "resolution": self._resolution.serialized,
-            "margin_px_count": self._margin_px_count,
             "aruco_dict": self._predefined_aruco_dict,
             "seed": self._random_seed,
         }

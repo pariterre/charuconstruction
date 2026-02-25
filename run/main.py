@@ -19,7 +19,6 @@ from charuconstruction import (
 import numpy as np
 
 # TODO Add force sensor
-# TODO Move the camera loop to a separate thread
 # TODO Add capability to detect joint angles (calibrate first?)
 # TODO Add capability to see if joint angles are on target
 # TODO Add capability to graph force against joint angles (phase diagram?)

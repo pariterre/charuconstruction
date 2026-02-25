@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Iterable, TYPE_CHECKING
+from datetime import datetime
+from typing import Iterable, TYPE_CHECKING, List, Tuple
 import threading
 
 import cv2
@@ -81,31 +82,27 @@ class LiveVideoReader(MediaReader):
         self._live_uri = live_uri
         self._cap = cv2.VideoCapture(self._live_uri)
 
-        self._last_fetched_frame_index = -1
-        self._last_read_frame_index = -1
-        self._latest_frame: None | np.ndarray = None
+        self._frames: List[Tuple[datetime, np.ndarray]] = []
         self._lock = threading.Lock()
         self._running = True
 
         self._thread = threading.Thread(target=self._fetch_frame, daemon=True)
         self._thread.start()
 
-        while self._latest_frame is None and self._running:
-            cv2.waitKey(100)
+        # Wait for the first frame to be fetched before continuing
+        self._last_read_frame_index = 0
+        self._read_frame()
 
         super().__init__()
 
     def _fetch_frame(self):
         while self._running:
             ret, frame = self._cap.read()
-            if not ret:
-                self._latest_frame = None
-                self._running = False
-                return
-
             with self._lock:
-                self._last_fetched_frame_index += 1
-                self._latest_frame = frame
+                if not ret:
+                    self._running = False
+                    return
+                self._frames.append((datetime.now(), frame.copy()))
 
     def destroy(self):
         self._running = False
@@ -113,21 +110,20 @@ class LiveVideoReader(MediaReader):
         self._cap.release()
 
     def _read_frame(self):
-        if not self._running:
-            return None
-
-        while self._last_read_frame_index >= self._last_fetched_frame_index:
+        # Make sure we don't send the same frame multiple times
+        while (
+            self._last_read_frame_index >= len(self._frames) and self._running
+        ):
             cv2.waitKey(10)
 
+        # Check if the reader is still running before trying to read a frame
         with self._lock:
-            print(
-                f"LiveVideoReader: Current frame index: {self._last_fetched_frame_index}"
-            )
-            if self._latest_frame is None:
+            if not self._running:
                 return None
-            else:
-                self._last_read_frame_index = self._last_fetched_frame_index
-                return Frame(self._latest_frame.copy())
+
+            print(f"Reading frame {self._last_read_frame_index}")
+            self._last_read_frame_index = len(self._frames)
+            return Frame(self._frames[-1][1])
 
 
 class CharucoMockReader(MediaReader):

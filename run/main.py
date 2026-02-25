@@ -148,58 +148,63 @@ def main():
     if should_compute_error:
         errors: dict[Charuco, list[np.ndarray]] = {}
 
+    i = 0
     for frame in reader:
-        if should_record_video and video_frame is None:
-            video_frame = frame
-            video_frame.start_recording(video_save_path)
+        frame_to_draw = Frame(frame.get().copy())
+        i += 1
+        if i % 3 == 0:
+            if should_record_video and video_frame is None:
+                video_frame = frame
+                video_frame.start_recording(video_save_path)
 
-        frame_results: dict[
-            Charuco, tuple[TranslationVector | None, RotationMatrix | None]
-        ] = {}
-        for charuco in charuco_boards:
-            frame_results[charuco] = charuco.detect(frame=frame, camera=camera)
-
-        # Compute the reconstruction error in degrees
-        if should_compute_error:
+            frame_results: dict[
+                Charuco, tuple[TranslationVector | None, RotationMatrix | None]
+            ] = {}
             for charuco in charuco_boards:
-                if charuco not in errors:
-                    errors[charuco] = []
+                frame_results[charuco] = charuco.detect(
+                    frame=frame, camera=camera
+                )
 
-                _, rotation = frame_results[charuco]
-                if rotation is None:
-                    errors[charuco].append(np.ndarray((3, 1)) * np.nan)
+            # Compute the reconstruction error in degrees
+            if should_compute_error:
+                for charuco in charuco_boards:
+                    if charuco not in errors:
+                        errors[charuco] = []
+
+                    _, rotation = frame_results[charuco]
+                    if rotation is None:
+                        errors[charuco].append(np.ndarray((3, 1)) * np.nan)
+                        continue
+
+                    sequence = RotationMatrix.Sequence.ZYX
+                    true_values = (
+                        reader.transformations(charuco)
+                        .rotation.to_euler(sequence=sequence, degrees=True)
+                        .as_array()
+                    )
+                    reconstructed_values = rotation.to_euler(
+                        sequence=sequence, degrees=True
+                    ).as_array()
+                    errors[charuco].append(true_values - reconstructed_values)
+
+            # Show the estimated pose for each board on the current frame
+            for charuco in charuco_boards:
+                translation, rotation = frame_results[charuco]
+                if translation is None or rotation is None:
                     continue
 
-                sequence = RotationMatrix.Sequence.ZYX
-                true_values = (
-                    reader.transformations(charuco)
-                    .rotation.to_euler(sequence=sequence, degrees=True)
-                    .as_array()
+                # charuco.draw_aruco_markers(frame_to_draw)
+                charuco.draw_estimated_pose_axes(
+                    frame=frame_to_draw,
+                    camera=camera,
+                    translation=translation,
+                    rotation=rotation,
+                    axes_length=0.1,
                 )
-                reconstructed_values = rotation.to_euler(
-                    sequence=sequence, degrees=True
-                ).as_array()
-                errors[charuco].append(true_values - reconstructed_values)
 
-        # Show the estimated pose for each board on the current frame
-        frame_to_draw = Frame(frame.get().copy())
-        for charuco in charuco_boards:
-            translation, rotation = frame_results[charuco]
-            if translation is None or rotation is None:
-                continue
-
-            charuco.draw_aruco_markers(frame_to_draw)
-            charuco.draw_estimated_pose_axes(
-                frame=frame_to_draw,
-                camera=camera,
-                translation=translation,
-                rotation=rotation,
-                axes_length=0.1,
-            )
-
-        if should_record_video:
-            video_frame.frame_from(frame_to_draw)
-            video_frame.add_frame_to_recording()
+            if should_record_video:
+                video_frame.frame_from(frame_to_draw)
+                video_frame.add_frame_to_recording()
 
         is_visible = frame_to_draw.show(
             wait_time=(1 if automatic_frame else None)

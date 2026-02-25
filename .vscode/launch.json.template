@@ -40,7 +40,7 @@
       "env": {
         "PYTHONPATH": "${workspaceFolder}",
         "DATA_TYPE": "<[simulated] | video | photos | live>",
-        "CAMERA_MODEL": "<CAMERA_MODEL>",           // The CameraModel as a string, e.g. "pixel2" (see 'camera.py')
+        "CAMERA_MODEL": "<CAMERA_MODEL>",           // The CameraModel as a string, e.g. "PIXEL2" (see 'camera.py')
         "CHARUCOS": "<NAME_OF_CHARUCOS>",           // Comma-separated list of charuco board names to use (created with create_board.py). For example: "charuco_4x6_24,charuco_4x6_42"
         "PHOTOS_PATH": "<PATH_TO_PHOTO_FILES>",     // Comma-separated list for photos paths. Is ignored if DATA_TYPE =/= photos
         "VIDEO_PATH": "<PATH_TO_VIDEO_FILE>",       // File path to the video. Is ignored if DATA_TYPE =/= video

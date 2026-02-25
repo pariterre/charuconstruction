@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Iterable, TYPE_CHECKING
+import threading
 
 import cv2
 import numpy as np
@@ -79,16 +80,54 @@ class LiveVideoReader(MediaReader):
     def __init__(self, live_uri: str):
         self._live_uri = live_uri
         self._cap = cv2.VideoCapture(self._live_uri)
+
+        self._last_fetched_frame_index = -1
+        self._last_read_frame_index = -1
+        self._latest_frame: None | np.ndarray = None
+        self._lock = threading.Lock()
+        self._running = True
+
+        self._thread = threading.Thread(target=self._fetch_frame, daemon=True)
+        self._thread.start()
+
+        while self._latest_frame is None and self._running:
+            cv2.waitKey(100)
+
         super().__init__()
 
+    def _fetch_frame(self):
+        while self._running:
+            ret, frame = self._cap.read()
+            if not ret:
+                self._latest_frame = None
+                self._running = False
+                return
+
+            with self._lock:
+                self._last_fetched_frame_index += 1
+                self._latest_frame = frame
+
     def destroy(self):
+        self._running = False
+        self._thread.join()
         self._cap.release()
 
     def _read_frame(self):
-        ret, frame = self._cap.read()
-        if not ret:
+        if not self._running:
             return None
-        return Frame(frame)
+
+        while self._last_read_frame_index >= self._last_fetched_frame_index:
+            cv2.waitKey(10)
+
+        with self._lock:
+            print(
+                f"LiveVideoReader: Current frame index: {self._last_fetched_frame_index}"
+            )
+            if self._latest_frame is None:
+                return None
+            else:
+                self._last_read_frame_index = self._last_fetched_frame_index
+                return Frame(self._latest_frame.copy())
 
 
 class CharucoMockReader(MediaReader):

@@ -71,7 +71,7 @@ class Camera:
         if use_video_parameters:
             video_width = 3840.0  # 4K video width in pixels (1920x1080 * 2)
             video_crop_factor = video_width / sensor_width
-            # video_crop_factor *= 0.5  # 1080p video crop factor
+            video_crop_factor *= 0.5  # 1080p video crop factor
 
             focal_length *= video_crop_factor
             sensor_width *= video_crop_factor

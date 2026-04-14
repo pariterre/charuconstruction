@@ -18,6 +18,7 @@ requires-python = ">=3.10"
 dependencies = [
     "numpy", 
     "opencv-contrib-python",
+    "bleak",
 ]
 
 # Any dev dependencies can go here. Also, if a package is not available on pip, it should be referenced here

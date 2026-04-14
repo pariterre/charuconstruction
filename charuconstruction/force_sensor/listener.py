@@ -5,6 +5,9 @@ class Listener:
     def __init__(self):
         self._listeners: List[Callable[[Any], None]] = []
 
+    def __contains__(self, item):
+        return item in self._listeners
+
     def add_listener(self, callback: Callable[[Any], None]) -> None:
         """
         Register a callback function to be called whenever new data is received from the sensor.

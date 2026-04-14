@@ -1,32 +1,10 @@
 import asyncio
 import logging
+from matplotlib import pyplot as plt
 
 from charuconstruction import B24ForceSensor
 
 _logger = logging.getLogger(__name__)
-
-
-async def connect_b24_sensor(max_retries: int = 10) -> B24ForceSensor:
-    force_sensor = None
-    retry_count = 0
-    while force_sensor is None and retry_count < max_retries:
-        _logger.info(
-            f"Scanning for B24 sensors (attempt {retry_count + 1}/{max_retries})…"
-        )
-        try:
-            force_sensor = await B24ForceSensor.from_bluetooth()
-        except RuntimeError as e:
-            force_sensor = None
-            retry_count += 1
-    if force_sensor is None:
-        _logger.error(
-            f"No B24 sensor found after {max_retries} attempts. "
-            f"Please ensure the sensor is nearby and advertising via Bluetooth."
-        )
-        raise RuntimeError("Failed to connect to B24 sensor.")
-
-    _logger.info("B24 sensor connected successfully.")
-    return force_sensor
 
 
 async def main():
@@ -34,8 +12,25 @@ async def main():
         level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
     )
 
-    force_sensor = await connect_b24_sensor()
-    await force_sensor.start_reading(duration_s=10.0)
+    force_sensor = await B24ForceSensor.from_bluetooth()
+    force_sensor.start_live_plot()
+    force_sensor.on_data_received(
+        lambda data: _logger.info(
+            f"Received data: time: {data[0]}, force: {data[1]}"
+        )
+    )
+    await force_sensor.start_reading(pin_number=0)
+
+    # Keep the program running for 10 seconds to receive data from the sensor
+    await asyncio.sleep(10)
+
+    # Stop reading from the sensor and exit
+    await force_sensor.stop_reading()
+
+    # Wait until the figure is closed before exiting the program
+    if plt.fignum_exists(1):
+        plt.ioff()
+        plt.show()
 
 
 if __name__ == "__main__":

@@ -19,6 +19,7 @@ dependencies = [
     "numpy", 
     "opencv-contrib-python",
     "bleak",
+    "matplotlib",
 ]
 
 # Any dev dependencies can go here. Also, if a package is not available on pip, it should be referenced here

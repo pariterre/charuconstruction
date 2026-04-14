@@ -50,5 +50,17 @@
         "RECORD_PATH": "<PATH_TO_SAVE_VIDEO>",      // Mandatory if RECORD_VIDEO is set to "true", ignored otherwise.
       },
     },
+    {
+      "name": "B24 Main",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/run/b24_main.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "cwd": "${workspaceFolder}/run/",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+      },
+    },
   ]
 }

@@ -1,17 +1,12 @@
-import asyncio
 from enum import Enum
 import logging
 import struct
 import time
-from typing import TYPE_CHECKING
 
-from bleak import BleakClient, BleakScanner
+import simplepyble
 import numpy as np
 
 from .force_sensor import ForceSensor
-
-if TYPE_CHECKING:
-    from bleak.backends.device import BLEDevice
 
 
 _logger = logging.getLogger(__name__)
@@ -21,7 +16,7 @@ class B24SampleRateConfiguration(Enum):
     # Time between samples in milliseconds (ms)
     STOP = 0
     FASTEST = 80
-    BATTERY_SAVER = 1000  # TODO Change this to 1000?
+    BATTERY_SAVER = 5000  # TODO Change this to 1000?
     SLOWEST = 10_000
 
 
@@ -33,26 +28,24 @@ class B24ResolutionConfiguration(Enum):
 
 
 class B24ForceSensor(ForceSensor):
-    def __init__(self, device: BLEDevice):
+    def __init__(self, device: simplepyble.Peripheral):
         super().__init__()
 
         self._device = device
-        self._client: BleakClient | None = None
 
-        self._is_started = False
         self._starting_time: float | None = None
         self._time_vector = np.ndarray((0,))
         self._data = np.ndarray((0, 1))
 
     @property
     def name(self) -> str:
-        return self._device.name
+        return self._device.identifier()
 
     @property
     def address(self) -> str:
-        return self._device.address
+        return self._device.address()
 
-    async def start_reading(
+    def start_reading(
         self,
         pin_number: int,
         max_retries: int = 10,
@@ -66,16 +59,7 @@ class B24ForceSensor(ForceSensor):
         max_retries: int
             The maximum number of connection attempts before giving up.
         """
-        # Start the connection on a separate task to allow for retries without blocking the main thread
-        asyncio.create_task(
-            self._start_reading(pin_number=pin_number, max_retries=max_retries)
-        )
-        while self._client is None or not self._client.is_connected:
-            await asyncio.sleep(0.1)
-        return True
-
-    async def _start_reading(self, pin_number: int, max_retries: int) -> bool:
-        if self._client is not None and self._client.is_connected:
+        if self._device.is_connected():
             _logger.warning(
                 "Already connected to a B24 sensor. Stop reading before starting again."
             )
@@ -84,46 +68,38 @@ class B24ForceSensor(ForceSensor):
         _logger.info(f"Connecting to B24 sensor...")
         retry_count = 0
         while retry_count < max_retries:
-            self._is_started = False
             try:
-                async with BleakClient(
-                    address_or_ble_device=self._device,
-                    timeout=30.0,
-                    services=[
-                        service.value for service in _B24Helpers.B24Services
-                    ],
-                ) as self._client:
-                    await self._send_pin_number(pin_number=pin_number)
-                    _logger.info(f"Connected to B24 sensor")
-                    self._is_started = True
+                self._device.connect()
+                if not self._device.is_connected():
+                    raise RuntimeError("Failed to connect to the B24 sensor.")
+                self._send_pin_number(pin_number=pin_number)
 
-                    # Configure the sensor for maximum resolution and fastest data rate
-                    await self.configure_resolution(
-                        B24ResolutionConfiguration.MAXIMUM
-                    )
-                    await self.configure_data_rate(
-                        sample_rate=B24SampleRateConfiguration.FASTEST
-                    )
+                _logger.info(f"Connected to B24 sensor")
 
-                    # Subscribe to notifications for value and status updates
-                    await self._client.start_notify(
-                        _B24Helpers.B24Services.VALUE.value, self._on_value
-                    )
-                    await self._client.start_notify(
-                        _B24Helpers.B24Services.STATUS.value, self._on_status
-                    )
+                # Configure the sensor for maximum resolution and fastest data rate
+                self.configure_resolution(B24ResolutionConfiguration.MAXIMUM)
+                self.configure_data_rate(
+                    sample_rate=B24SampleRateConfiguration.FASTEST
+                )
 
-                    # Keep the connection alive until stop_reading is called
-                    while self._is_started:
-                        await asyncio.sleep(1.0)
-                    self._client = None
-                    return True
+                # Subscribe to notifications for value and status updates
+                self._device.notify(
+                    _B24Helpers.B24Services.NOTIFICATIONS.value,
+                    _B24Helpers.B24Services.VALUE.value,
+                    self._on_value,
+                )
+                self._device.notify(
+                    _B24Helpers.B24Services.NOTIFICATIONS.value,
+                    _B24Helpers.B24Services.STATUS.value,
+                    self._on_status,
+                )
+                return True
 
             except Exception:
                 _logger.warning(
                     f"Could not connect to B24 sensor, retrying in 1 second..."
                 )
-                await asyncio.sleep(1)
+                time.sleep(1)
                 retry_count += 1
 
         _logger.error(
@@ -131,25 +107,35 @@ class B24ForceSensor(ForceSensor):
         )
         return False
 
-    async def stop_reading(self) -> bool:
-        if self._client is None or not self._client.is_connected:
+    def stop_reading(self) -> bool:
+        if not self._device.is_connected():
             _logger.warning("Not connected to any B24 sensor.")
             return False
 
         _logger.info("Stopping reading from B24 sensor and disconnecting...")
         # Stop notifications and reset sensor configuration to battery saver mode before disconnecting
-        await self.configure_resolution(
-            B24ResolutionConfiguration.BATTERY_SAVER
-        )
-        await self.configure_data_rate(B24SampleRateConfiguration.BATTERY_SAVER)
+        self.configure_resolution(B24ResolutionConfiguration.BATTERY_SAVER)
+        self.configure_data_rate(B24SampleRateConfiguration.BATTERY_SAVER)
 
         # Stop notifications before disconnecting
-        await self._client.stop_notify(_B24Helpers.B24Services.VALUE.value)
-        await self._client.stop_notify(_B24Helpers.B24Services.STATUS.value)
+        self._device.unsubscribe(
+            _B24Helpers.B24Services.NOTIFICATIONS.value,
+            _B24Helpers.B24Services.VALUE.value,
+        )
+        self._device.unsubscribe(
+            _B24Helpers.B24Services.NOTIFICATIONS.value,
+            _B24Helpers.B24Services.STATUS.value,
+        )
 
-        self._is_started = False
-        _logger.info("Disconnected from B24 sensor.")
-        return True
+        try:
+            self._device.disconnect()
+            _logger.info("Disconnected from B24 sensor.")
+            return True
+        except Exception:
+            _logger.error(
+                "Failed to disconnect from B24 sensor... Maybe already disconnected?"
+            )
+            return False
 
     def clear_data(self):
         self._starting_time = None
@@ -166,8 +152,8 @@ class B24ForceSensor(ForceSensor):
         return self._data
 
     @classmethod
-    async def from_bluetooth(
-        cls, timeout_s: float = 1.0, max_retries: int = 100
+    def from_bluetooth(
+        cls, timeout_ms: int = 1000, max_retries: int = 100
     ) -> B24ForceSensor:
         """
         Discover nearby B24 sensors via Bluetooth and return an instance of B24ForceSensor.
@@ -180,9 +166,22 @@ class B24ForceSensor(ForceSensor):
                 _logger.info(
                     f"Scanning for B24 sensors (attempt {try_count + 1}/{max_retries})..."
                 )
-            devices = await BleakScanner.discover(timeout=timeout_s)
+            adapters = simplepyble.Adapter.get_adapters()
+            if not adapters:
+                _logger.error("Bluetooth is not available on this system.")
+                raise RuntimeError("Bluetooth is not available on this system.")
+            if len(adapters) > 1:
+                _logger.warning(
+                    f"Multiple Bluetooth adapters found. Using the first one: {adapters[0].name}"
+                )
+            adapter = adapters[0]
+            adapter.scan_for(timeout_ms)
+            peripherals = adapter.scan_get_results()
+
             b24 = [
-                d for d in devices if (d.name or "").upper().startswith("B24")
+                peripheral
+                for peripheral in peripherals
+                if peripheral.identifier().startswith("B24")
             ]
             if b24:
                 _logger.info(f"Found B24 sensor")
@@ -195,39 +194,29 @@ class B24ForceSensor(ForceSensor):
         )
         raise RuntimeError("No B24 sensor found nearby after maximum retries.")
 
-    async def configure_resolution(
-        self, resolution: B24ResolutionConfiguration
-    ):
+    def configure_resolution(self, resolution: B24ResolutionConfiguration):
         """
         Configure the resolution (number of bits) for the B24 sensor.
         Note that higher resolution may limit the maximum data rate.
         """
-        await self._client.write_gatt_char(
+        self._device.write_command(
+            _B24Helpers.B24Services.CONFIGURATION.value,
             _B24Helpers.B24Services.RESOLUTION.value,
             _B24Helpers._pack_u8(resolution.value),
-            response=True,
         )
 
-    async def configure_data_rate(
-        self, sample_rate: B24SampleRateConfiguration
-    ):
+    def configure_data_rate(self, sample_rate: B24SampleRateConfiguration):
         """
         Configure the data rate (time between samples in ms) for the B24 sensor.
         """
 
-        await self._client.write_gatt_char(
+        self._device.write_command(
+            _B24Helpers.B24Services.CONFIGURATION.value,
             _B24Helpers.B24Services.DATA_RATE.value,
             _B24Helpers._pack_u32_be(sample_rate.value),
-            response=True,
         )
 
-        await self._client.write_gatt_char(
-            _B24Helpers.B24Services.RESOLUTION.value,
-            _B24Helpers._pack_u8(16),
-            response=True,
-        )
-
-    async def _send_pin_number(self, pin_number: int) -> bool:
+    def _send_pin_number(self, pin_number: int) -> bool:
         """
         Send a PIN number so the sensor can connect.
 
@@ -238,14 +227,14 @@ class B24ForceSensor(ForceSensor):
             This should be a non-negative integer.
         """
 
-        response = await self._client.write_gatt_char(
+        response = self._device.write_command(
+            _B24Helpers.B24Services.CONFIGURATION.value,
             _B24Helpers.B24Services.PIN.value,
             _B24Helpers._pack_u32_be(pin_number),
-            response=True,
         )
         return response
 
-    def _on_value(self, _, data: bytearray):
+    def _on_value(self, data: bytearray):
         now = time.perf_counter()
         if self._starting_time is None:
             self._starting_time = now
@@ -254,18 +243,18 @@ class B24ForceSensor(ForceSensor):
             (self._time_vector, [now - self._starting_time])
         )
 
-        data = (
+        value = (
             _B24Helpers._unpack_f32_be(bytes(data))
             if len(data) == 4
             else float("nan")
         )
-        self._data = np.concatenate((self._data, [[data]]), axis=0)
+        self._data = np.concatenate((self._data, [[value]]), axis=0)
 
         self._on_data_received.notify_listeners(
             data=(self._time_vector[-1], self._data[-1, :])
         )
 
-    def _on_status(self, _, data: bytearray):
+    def _on_status(self, data: bytearray):
         status = data[0] if data else 0
         fast_mode_flag = (status >> 4) & 0x01
         batt_low = (status >> 5) & 0x01
@@ -281,12 +270,13 @@ class B24ForceSensor(ForceSensor):
 class _B24Helpers:
     class B24Services(Enum):
         # Configuration characteristics (write-only)
-        TELEMETRY = "a970fd30-a0e8-11e6-bdf4-0800200c9a66"
+        CONFIGURATION = "a970fd30-a0e8-11e6-bdf4-0800200c9a66"
         DATA_RATE = "a970fd31-a0e8-11e6-bdf4-0800200c9a66"
         RESOLUTION = "a970fd32-a0e8-11e6-bdf4-0800200c9a66"
         PIN = "a970fd39-a0e8-11e6-bdf4-0800200c9a66"
 
         # Notification characteristics (notify-only)
+        NOTIFICATIONS = "a9712440-a0e8-11e6-bdf4-0800200c9a66"
         STATUS = "a9712441-a0e8-11e6-bdf4-0800200c9a66"
         VALUE = "a9712442-a0e8-11e6-bdf4-0800200c9a66"
         UNITS = "a9712443-a0e8-11e6-bdf4-0800200c9a66"

@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-from functools import partial
+from multiprocessing import Event, Process, Queue
+import time
 
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
 import numpy as np
 
 from .listener import Listener
@@ -14,7 +15,9 @@ class ForceSensor(ABC):
         self._on_data_received = Listener()
         self._on_status_received = Listener()
 
-        self._live_plot_axes = None
+        # Queue for live plotting
+        self._figure_queue = Queue()
+        self._figure_closed_event = Event()
 
     @property
     @abstractmethod
@@ -134,31 +137,62 @@ class ForceSensor(ABC):
         Returns:
             None
         """
-        self._live_plot_axes = _prepare_figure()
-        self.on_data_received(
-            partial(_update_figure, force_sensor=self, ax=self._live_plot_axes)
+        # Start a live plot in another process to avoid blocking the main thread
+        process = Process(
+            target=_prepare_figure,
+            args=(self._figure_queue, self._figure_closed_event),
         )
+        process.start()
+
+        self.on_data_received(self._update_figure)
+
+    def _update_figure(self, data):
+        self._figure_queue.put(data)
+
+    def wait_for_plot_close(self):
+        """
+        Wait until the live plot is closed before returning. This should be called after stop_reading to ensure that the program does not exit before the user has closed the plot.
+
+        Returns:
+            None
+        """
+
+        self._figure_closed_event.wait()
 
 
-def _prepare_figure():
-    plt.ion()
-    plt.figure(figsize=(10, 6))
-    plt.xlabel("Time (s)")
-    plt.ylabel("Force (N)")
-    plt.title("B24 Force Sensor Data")
-    plt.show()
+def _prepare_figure(queue, closed_event, frame_per_second: float = 20) -> None:
+    def on_close(_):
+        closed_event.set()
 
+    fig, ax = plt.subplots(figsize=(10, 6))
+    fig.canvas.mpl_connect("close_event", on_close)
 
-def _update_figure(data, force_sensor: ForceSensor, ax: plt.Axes):
-    if not plt.fignum_exists(1):
-        return
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Force (N)")
+    ax.set_title("B24 Force Sensor Data")
 
-    time_vector = force_sensor.time_vector
-    force_vector = force_sensor.force_vector
-    plt.clf()
-    plt.plot(time_vector, force_vector)
-    plt.xlabel("Time (s)")
-    plt.ylabel("Force (N)")
-    plt.title("B24 Force Sensor Data")
-    plt.draw()
-    plt.pause(0.001)
+    x_data = []
+    y_data = []
+    (line,) = ax.plot([], [])
+    plt.show(block=False)
+
+    last_draw_time = time.time()
+    while not closed_event.is_set():
+        if not queue.empty():
+            data = queue.get()
+
+            x_data.append(data[0])
+            y_data.append(data[1])
+
+        now = time.time()
+        if now - last_draw_time >= 1.0 / frame_per_second:
+            line.set_xdata(x_data)
+            line.set_ydata(y_data)
+
+            ax.relim()
+            ax.autoscale_view()
+
+            fig.canvas.draw_idle()
+            fig.canvas.flush_events()
+
+            last_draw_time = now

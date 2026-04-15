@@ -21,7 +21,7 @@ class B24SampleRateConfiguration(Enum):
     # Time between samples in milliseconds (ms)
     STOP = 0
     FASTEST = 80
-    BATTERY_SAVER = 5000  # TODO Change this to 1000?
+    BATTERY_SAVER = 1000  # TODO Change this to 1000?
     SLOWEST = 10_000
 
 
@@ -87,7 +87,11 @@ class B24ForceSensor(ForceSensor):
             self._is_started = False
             try:
                 async with BleakClient(
-                    address_or_ble_device=self._device, timeout=30.0
+                    address_or_ble_device=self._device,
+                    timeout=30.0,
+                    services=[
+                        service.value for service in _B24Helpers.B24Services
+                    ],
                 ) as self._client:
                     await self._send_pin_number(pin_number=pin_number)
                     _logger.info(f"Connected to B24 sensor")

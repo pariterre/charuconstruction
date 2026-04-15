@@ -135,7 +135,9 @@ class ForceSensor(ABC):
             None
         """
         self._live_plot_axes = _prepare_figure()
-        self.on_data_received(partial(_update_figure, ax=self._live_plot_axes))
+        self.on_data_received(
+            partial(_update_figure, force_sensor=self, ax=self._live_plot_axes)
+        )
 
 
 def _prepare_figure():
@@ -147,11 +149,12 @@ def _prepare_figure():
     plt.show()
 
 
-def _update_figure(data, ax: plt.Axes):
+def _update_figure(data, force_sensor: ForceSensor, ax: plt.Axes):
     if not plt.fignum_exists(1):
         return
 
-    time_vector, force_vector = data
+    time_vector = force_sensor.time_vector
+    force_vector = force_sensor.force_vector
     plt.clf()
     plt.plot(time_vector, force_vector)
     plt.xlabel("Time (s)")

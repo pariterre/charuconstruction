@@ -264,9 +264,6 @@ class B24ForceSensor(ForceSensor):
         )
 
 
-# --- UUIDs (B24 Telemetry Technical Manual) ---
-
-
 class _B24Helpers:
     class B24Services(Enum):
         # Configuration characteristics (write-only)

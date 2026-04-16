@@ -179,3 +179,6 @@ run/recording
 *.xcf
 
 .vscode/launch.json
+
+# Keep the Flutter project
+!charuconstruction_flutter/*

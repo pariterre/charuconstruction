@@ -95,9 +95,9 @@ class B24ForceSensor(ForceSensor):
                 )
                 return True
 
-            except Exception:
+            except Exception as e:
                 _logger.warning(
-                    f"Could not connect to B24 sensor, retrying in 1 second..."
+                    f"Could not connect to B24 sensor ({e}), retrying in 1 second..."
                 )
                 time.sleep(1)
                 retry_count += 1

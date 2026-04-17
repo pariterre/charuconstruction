@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:charuconstruction_flutter/devices/b24_force_sensor.dart';
+import 'package:charuconstruction_flutter/providers/devices_provider.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -8,9 +9,13 @@ void main() {
       home: Scaffold(
         appBar: AppBar(title: Text('B24 Force Sensor')),
         body: Center(
-          child: ElevatedButton(
-            onPressed: connect,
-            child: Text('Connect to Sensor'),
+          child: Column(
+            children: [
+              ElevatedButton(
+                onPressed: _connect,
+                child: Text('Connect to Sensor'),
+              ),
+            ],
           ),
         ),
       ),
@@ -41,37 +46,46 @@ class _ShowStatusState extends State<ShowStatus> {
   }
 }
 
-void connect() async {
-  try {
-    final sensor = await B24ForceSensor.fromBluetooth();
-    final connected = await sensor.connect(pinNumber: 0);
+void _onNewData(DateTime timestamp, List<double> values) {
+  print(
+    't=${timestamp.toIso8601String()}  value=${values.map((v) => v.toStringAsFixed(3)).join(', ')}',
+  );
+}
 
-    if (!connected) {
-      print('Failed to connect.');
-      return;
-    }
+Future<void> _connect() async {
+  try {
+    final device = B24ForceSensor();
+    device.connect(pinNumber: );
+    DevicesProvider.instance.add(device);
 
     // Listen to incoming data
-    final subscription = sensor.onDataReceived.listen((event) {
-      final (time, values) = event;
-      print(
-        't=${time.toStringAsFixed(3)}s  value=${values.map((v) => v.toStringAsFixed(3)).join(', ')}',
-      );
-    });
-
-    // Wait 10 seconds
-    await sensor.startReading();
-    print('Streaming data for 10 seconds...\n');
-    await Future.delayed(Duration(seconds: 10));
-
-    print('\nStopping...');
-
-    await subscription.cancel();
-    await sensor.stopReading();
-    await sensor.disconnect();
-
-    print('Disconnected cleanly.');
+    device.onNewData.listen(_onNewData);
   } catch (e) {
     print('Error: $e');
   }
+}
+
+Future<void> _disconnect() async {
+  try {
+    await sensor.stopReading();
+    await sensor.disconnect();
+    print('Disconnected cleanly.');
+  } catch (e) {
+    print('Error during disconnection: $e');
+  }
+}
+
+Future<void> _startReading() async {
+  // Wait 10 seconds
+  await sensor.startReading();
+  print('Streaming data for 10 seconds...\n');
+  await Future.delayed(Duration(seconds: 10));
+
+  print('\nStopping...');
+
+  await subscription.cancel();
+  await sensor.stopReading();
+  await sensor.disconnect();
+
+  print('Disconnected cleanly.');
 }

@@ -219,6 +219,7 @@ class B24ForceSensorMocker extends B24ForceSensor {
 
   @override
   Future<void> scan() async {
+    await Future.delayed(Duration(seconds: 1));
     _deviceFound = true;
   }
 

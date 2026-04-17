@@ -187,6 +187,8 @@ class _B24ManagementScreenState extends State<_B24ManagementScreen> {
       _statusMessage = 'Scan failed';
       _errorMessage = 'An unexpected error occurred: $e';
     }
+
+    if (!mounted) return;
     setState(() {
       _isBusy = false;
     }); // Update UI to show device found
@@ -233,6 +235,7 @@ class _B24ManagementScreenState extends State<_B24ManagementScreen> {
       _errorMessage = 'An unexpected error occurred: $e';
     }
 
+    if (!mounted) return;
     setState(() {
       _isBusy = false;
     });
@@ -256,6 +259,7 @@ class _B24ManagementScreenState extends State<_B24ManagementScreen> {
       _errorMessage = 'An unexpected error occurred: $e';
     }
 
+    if (!mounted) return;
     setState(() {
       _isBusy = false;
     });
@@ -279,6 +283,7 @@ class _B24ManagementScreenState extends State<_B24ManagementScreen> {
       _errorMessage = 'An unexpected error occurred: $e';
     }
 
+    if (!mounted) return;
     setState(() {
       _isBusy = false;
     });

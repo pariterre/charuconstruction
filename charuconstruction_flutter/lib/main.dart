@@ -1,10 +1,12 @@
+import 'dart:ui';
+
 import 'package:charuconstruction_flutter/devices/ble/manage_ble_device_dialog.dart';
 import 'package:charuconstruction_flutter/devices/device.dart';
 import 'package:charuconstruction_flutter/providers/devices_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 
-void main() {
+Future<void> main() async {
   // Setup logging
   Logger.root.level = Level.ALL;
   Logger.root.onRecord.listen((record) {
@@ -13,18 +15,61 @@ void main() {
     );
   });
 
-  runApp(CharuconstructionApp());
+  runApp(
+    MaterialApp(
+      home: const CharuconstructionApp(),
+      theme: ThemeData(colorScheme: .fromSeed(seedColor: Colors.deepPurple)),
+    ),
+  );
 }
 
-class CharuconstructionApp extends StatelessWidget {
+class CharuconstructionApp extends StatefulWidget {
   const CharuconstructionApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      home: const MainScreen(),
-      theme: ThemeData(colorScheme: .fromSeed(seedColor: Colors.deepPurple)),
+  State<CharuconstructionApp> createState() => _CharuconstructionAppState();
+}
+
+class _CharuconstructionAppState extends State<CharuconstructionApp> {
+  @override
+  void initState() {
+    super.initState();
+
+    AppLifecycleListener(
+      onExitRequested: () async {
+        // Show a waiting dialog while disconnecting devices
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: Text('Exiting...'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 20),
+                Text('Disconnecting devices, please wait...'),
+              ],
+            ),
+          ),
+        );
+
+        final toWait = <Future>[];
+        for (final device in DevicesProvider.instance.connectedDevices) {
+          toWait.add(device.disconnect());
+        }
+        await Future.wait(toWait);
+
+        // close the waiting dialog
+        if (mounted) Navigator.of(context).pop();
+        return AppExitResponse.exit;
+      },
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const MainScreen();
   }
 }
 

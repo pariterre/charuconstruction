@@ -1,5 +1,6 @@
 import 'package:charuconstruction_flutter/devices/b24_force_sensor.dart';
 import 'package:charuconstruction_flutter/devices/device.dart';
+import 'package:charuconstruction_flutter/utils/generic_listener.dart';
 
 const useB24Mocker = bool.fromEnvironment(
   'CHARUCONSTRUCTION_USE_B24_MOCKER',
@@ -15,6 +16,18 @@ enum AvailableDevices {
       AvailableDevices.b24 =>
         useB24Mocker ? B24ForceSensorMocker() : B24ForceSensor(),
     };
+
+    // Listen to status changes and notify the provider
+    device.onConnectionStatusChanged.listen((_) {
+      DevicesProvider.instance.onDeviceStatusChanged.notifyListeners(
+        (callback) => callback(this),
+      );
+    });
+    device.onReadingStatusChanged.listen((_) {
+      DevicesProvider.instance.onDeviceStatusChanged.notifyListeners(
+        (callback) => callback(this),
+      );
+    });
 
     // Return the device ready to be used
     return device;
@@ -39,6 +52,12 @@ class DevicesProvider {
   /// [device] is the device to get
   ///
   Device device(AvailableDevices device) => _devices[device]!;
+
+  ///
+  /// A notifier to know when a device status changed
+  ///
+  final onDeviceStatusChanged =
+      GenericListener<void Function(AvailableDevices device)>();
 
   ///
   /// A list of the connected devices

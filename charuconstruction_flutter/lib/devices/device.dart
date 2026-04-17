@@ -48,6 +48,10 @@ abstract class Device {
   bool get isDisconnected => !isConnected;
   bool get isNotConnected => isDisconnected;
 
+  GenericListener<void Function(bool isConnected)>
+  get onConnectionStatusChanged =>
+      GenericListener<void Function(bool isConnected)>();
+
   ///
   /// Connect to the device. If the device requires a pin, it should be provided as an argument.
   ///
@@ -63,6 +67,9 @@ abstract class Device {
   ///
   bool get isReading;
   bool get isNotReading => !isReading;
+
+  GenericListener<void Function(bool isReading)> get onReadingStatusChanged =>
+      GenericListener<void Function(bool isReading)>();
 
   ///
   /// Start reading data from the device. The device should be configured to send data at this point.

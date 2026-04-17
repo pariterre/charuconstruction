@@ -35,6 +35,7 @@ class _CharuconstructionAppState extends State<CharuconstructionApp> {
   void initState() {
     super.initState();
 
+    // Make sure all the devices are disconnected when the app is closed
     AppLifecycleListener(
       onExitRequested: () async {
         // Show a waiting dialog while disconnecting devices
@@ -81,19 +82,21 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  Future<void> _manageBleDevices() async {
-    await showDialog(
-      context: context,
-      builder: (context) => Scaffold(
-        appBar: AppBar(
-          title: Text('Manage BLE Devices'),
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        ),
-        body: const BleDeviceManagerPage(),
-      ),
+  @override
+  void initState() {
+    super.initState();
+
+    DevicesProvider.instance.onDeviceStatusChanged.listen(
+      _onDeviceStatusChanged,
     );
-    if (!mounted) return;
-    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    DevicesProvider.instance.onDeviceStatusChanged.cancel(
+      _onDeviceStatusChanged,
+    );
+    super.dispose();
   }
 
   @override
@@ -121,6 +124,25 @@ class _MainScreenState extends State<MainScreen> {
         ),
       ),
     );
+  }
+
+  void _onDeviceStatusChanged(AvailableDevices device) {
+    setState(() {});
+  }
+
+  Future<void> _manageBleDevices() async {
+    await showDialog(
+      context: context,
+      builder: (context) => Scaffold(
+        appBar: AppBar(
+          title: Text('Manage BLE Devices'),
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        ),
+        body: const BleDeviceManagerPage(),
+      ),
+    );
+    if (!mounted) return;
+    setState(() {});
   }
 }
 

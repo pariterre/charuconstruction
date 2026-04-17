@@ -233,6 +233,10 @@ class B24ForceSensorMocker extends B24ForceSensor {
     _isConnected = true;
     _isReading = false;
     _setupTimerData();
+
+    onConnectionStatusChanged.notifyListeners(
+      (listener) => listener(isConnected),
+    );
   }
 
   @override
@@ -241,6 +245,11 @@ class B24ForceSensorMocker extends B24ForceSensor {
     _isConnected = false;
     _isReading = false;
     _setupTimerData();
+
+    await onConnectionStatusChanged.notifyListeners(
+      // TODO Check why this does not work
+      (listener) => listener(isConnected),
+    );
   }
 
   @override
@@ -248,6 +257,8 @@ class B24ForceSensorMocker extends B24ForceSensor {
     await Future.delayed(Duration(seconds: 1));
     _isReading = true;
     _setupTimerData();
+
+    onReadingStatusChanged.notifyListeners((listener) => listener(isReading));
   }
 
   @override
@@ -255,6 +266,8 @@ class B24ForceSensorMocker extends B24ForceSensor {
     await Future.delayed(Duration(seconds: 1));
     _isReading = false;
     _setupTimerData();
+
+    onReadingStatusChanged.notifyListeners((listener) => listener(isReading));
   }
 
   void _setupTimerData() {

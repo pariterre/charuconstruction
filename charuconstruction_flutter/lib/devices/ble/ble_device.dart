@@ -61,6 +61,10 @@ abstract class BleDevice extends Device {
         'Failed to connect after $maxRetries attempts.',
       );
     }
+
+    onConnectionStatusChanged.notifyListeners(
+      (listener) => listener(isConnected),
+    );
   }
 
   @override
@@ -73,6 +77,10 @@ abstract class BleDevice extends Device {
     } catch (e) {
       throw BleDeviceCouldNotDisconnect('Failed to disconnect: $e');
     }
+
+    onConnectionStatusChanged.notifyListeners(
+      (listener) => listener(isConnected),
+    );
   }
 
   @override
@@ -84,6 +92,7 @@ abstract class BleDevice extends Device {
     }
 
     isReading = true;
+    onReadingStatusChanged.notifyListeners((listener) => listener(isReading));
     _logger.info('Reading data!');
   }
 
@@ -96,6 +105,7 @@ abstract class BleDevice extends Device {
     }
 
     isReading = false;
+    onReadingStatusChanged.notifyListeners((listener) => listener(isReading));
     _logger.info('Stopped reading data!');
   }
 

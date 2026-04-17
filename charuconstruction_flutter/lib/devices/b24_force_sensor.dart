@@ -1,7 +1,11 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:charuconstruction_flutter/devices/ble/ble_device.dart';
+import 'package:logging/logging.dart';
 import 'package:universal_ble/universal_ble.dart' as ble;
+
+final _logger = Logger('B24ForceSensor');
 
 /// ---------------- ENUMS ----------------
 
@@ -59,7 +63,7 @@ class B24ForceSensor extends BleDevice {
         await configureResolution(B24ResolutionConfiguration.batterySaver);
         await configureDataRate(B24SampleRateConfiguration.batterySaver);
       } catch (e) {
-        print(
+        _logger.warning(
           'Failed to configure sensor for low power mode: $e. Trying to stop reading anyway.',
         );
       }
@@ -73,7 +77,7 @@ class B24ForceSensor extends BleDevice {
     try {
       await stopReading();
     } catch (e) {
-      print(
+      _logger.warning(
         'Failed to stop reading before disconnecting: $e. Trying to disconnect anyway.',
       );
     }
@@ -83,7 +87,7 @@ class B24ForceSensor extends BleDevice {
       await configureResolution(B24ResolutionConfiguration.sleep);
       await configureDataRate(B24SampleRateConfiguration.sleep);
     } catch (e) {
-      print(
+      _logger.warning(
         'Failed to configure sensor for low power mode before disconnecting: $e. Trying to disconnect anyway.',
       );
     }
@@ -133,7 +137,7 @@ class B24ForceSensor extends BleDevice {
   }) async {
     if (service.uuid.toString() != _B24Helpers.notifications) return;
     if (characteristic.uuid.toString() == _B24Helpers.value) {
-      print(
+      _logger.info(
         '${isSubscribing ? 'Subscribing' : 'Unsubscribing'} to data for characteristic ${characteristic.uuid}',
       );
       if (isSubscribing) {
@@ -143,7 +147,7 @@ class B24ForceSensor extends BleDevice {
         await characteristic.notifications.unsubscribe();
       }
     } else if (characteristic.uuid.toString() == _B24Helpers.status) {
-      print(
+      _logger.info(
         '${isSubscribing ? 'Subscribing' : 'Unsubscribing'} to status for characteristic ${characteristic.uuid}',
       );
       if (isSubscribing) {
@@ -157,11 +161,11 @@ class B24ForceSensor extends BleDevice {
 
   /// ---------------- DATA HANDLING ----------------
 
-  void _onValue(List<int> data) {
+  Future<void> _onValue(List<int> data) async {
     final timestamp = DateTime.now();
 
     double value = data.length == 4 ? BleDevice.unpackF32(data) : double.nan;
-    pushData(timestamp, [value]);
+    await pushData(timestamp, [value]);
   }
 
   void _onStatus(List<int> data) {
@@ -173,7 +177,7 @@ class B24ForceSensor extends BleDevice {
     int battLow = (status >> 5) & 1;
     int overRange = (status >> 3) & 1;
 
-    print(
+    _logger.info(
       'STATUS: 0x${status.toRadixString(16)} fast=$fast batt=$battLow over=$overRange',
     );
   }
@@ -190,4 +194,94 @@ class _B24Helpers {
   static const notifications = 'a9712440-a0e8-11e6-bdf4-0800200c9a66';
   static const status = 'a9712441-a0e8-11e6-bdf4-0800200c9a66';
   static const value = 'a9712442-a0e8-11e6-bdf4-0800200c9a66';
+}
+
+class B24ForceSensorMocker extends B24ForceSensor {
+  bool _deviceFound = false;
+  bool _isConnected = false;
+  bool _isReading = false;
+  Timer? _timerData;
+
+  @override
+  String? get name => _deviceFound ? 'B24 Mock Sensor' : null;
+
+  @override
+  String? get macAddress => _deviceFound ? '00:11:22:33:44:55' : null;
+
+  @override
+  bool get deviceFound => _deviceFound;
+
+  @override
+  bool get isConnected => _isConnected;
+
+  @override
+  bool get isReading => _isReading;
+
+  @override
+  Future<void> scan() async {
+    _deviceFound = true;
+  }
+
+  final _random = Random();
+
+  @override
+  Future<void> connect({int? pinNumber, int maxRetries = 10}) async {
+    if (pinNumber != 0) throw Exception('Invalid pin number');
+
+    await Future.delayed(Duration(seconds: 1));
+    _isConnected = true;
+    _isReading = false;
+    _setupTimerData();
+  }
+
+  @override
+  Future<void> disconnect() async {
+    await Future.delayed(Duration(seconds: 1));
+    _isConnected = false;
+    _isReading = false;
+    _setupTimerData();
+  }
+
+  @override
+  Future<void> startReading() async {
+    await Future.delayed(Duration(seconds: 1));
+    _isReading = true;
+    _setupTimerData();
+  }
+
+  @override
+  Future<void> stopReading() async {
+    await Future.delayed(Duration(seconds: 1));
+    _isReading = false;
+    _setupTimerData();
+  }
+
+  void _setupTimerData() {
+    // Sanitize existing timer
+    if (_timerData != null) {
+      _timerData!.cancel();
+      _timerData = null;
+    }
+
+    // If we are not connected, we should not have a timer at all
+    if (!_isConnected) return;
+
+    // If we are connected but not reading, we should have a timer that simulates low-rate data
+
+    _timerData = Timer.periodic(
+      Duration(
+        milliseconds: _isReading
+            ? B24SampleRateConfiguration.fastest.value
+            : B24SampleRateConfiguration.batterySaver.value,
+      ),
+      (timer) async {
+        // Generate a random value based on a sine wave + some noise
+        final timestamp = DateTime.now();
+        double value =
+            5000 * (1 + 0.5 * sin(timestamp.millisecondsSinceEpoch / 1000)) +
+            500 * (_random.nextDouble() - 0.5);
+        await _onValue(BleDevice.packF32(value));
+      },
+    );
+  }
 }

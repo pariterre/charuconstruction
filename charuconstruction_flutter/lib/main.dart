@@ -1,91 +1,143 @@
-import 'dart:async';
-import 'package:charuconstruction_flutter/devices/b24_force_sensor.dart';
+import 'package:charuconstruction_flutter/devices/ble/manage_ble_device_dialog.dart';
+import 'package:charuconstruction_flutter/devices/device.dart';
 import 'package:charuconstruction_flutter/providers/devices_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:logging/logging.dart';
 
 void main() {
-  runApp(
-    MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(title: Text('B24 Force Sensor')),
-        body: Center(
-          child: Column(
-            children: [
-              ElevatedButton(
-                onPressed: _connect,
-                child: Text('Connect to Sensor'),
+  // Setup logging
+  Logger.root.level = Level.ALL;
+  Logger.root.onRecord.listen((record) {
+    debugPrint(
+      '${record.level.name}: ${record.time}: ${record.loggerName}: ${record.message}',
+    );
+  });
+
+  runApp(CharuconstructionApp());
+}
+
+class CharuconstructionApp extends StatelessWidget {
+  const CharuconstructionApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: const MainScreen(),
+      theme: ThemeData(colorScheme: .fromSeed(seedColor: Colors.deepPurple)),
+    );
+  }
+}
+
+class MainScreen extends StatefulWidget {
+  const MainScreen({super.key});
+
+  @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
+  Future<void> _manageBleDevices() async {
+    await showDialog(
+      context: context,
+      builder: (context) => Scaffold(
+        appBar: AppBar(
+          title: Text('Manage BLE Devices'),
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        ),
+        body: const BleDeviceManagerPage(),
+      ),
+    );
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Charuconstruction'),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      ),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ElevatedButton(
+              onPressed: _manageBleDevices,
+              child: Text('Manage BLE Devices'),
+            ),
+            ...DevicesProvider.instance.connectedDevices.map(
+              (device) => Padding(
+                padding: const EdgeInsets.only(top: 20.0),
+                child: ShowCurrentValue(key: ValueKey(device), device: device),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class ShowCurrentValue extends StatefulWidget {
+  const ShowCurrentValue({super.key, required this.device});
+
+  final Device device;
+
+  @override
+  State<ShowCurrentValue> createState() => _ShowCurrentValueState();
+}
+
+class _ShowCurrentValueState extends State<ShowCurrentValue> {
+  @override
+  void initState() {
+    super.initState();
+
+    widget.device.onNewData.listen(_onNewData);
+  }
+
+  @override
+  void dispose() {
+    widget.device.onNewData.cancel(_onNewData);
+
+    super.dispose();
+  }
+
+  void _onNewData(DateTime timestamp, List<double> values) {
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const Placeholder();
+    final currentTime = widget.device.timeVector.isNotEmpty
+        ? widget.device.timeVector.last
+                  .difference(widget.device.startingTime)
+                  .inMilliseconds
+                  .toDouble() /
+              1000
+        : null;
+    final currentValues = widget.device.dataVector.isNotEmpty
+        ? widget.device.dataVector.last
+        : <double>[];
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Current value for ${widget.device.name}: '),
+        if (currentTime != null && currentValues.isNotEmpty)
+          Text(
+            'at ${currentTime.toStringAsFixed(1)}: [${currentValues.map((v) => v.toStringAsFixed(3)).join(', ')}]',
+          )
+        else
+          Text('No data received yet'),
+        SizedBox(width: 20),
+        ElevatedButton(
+          onPressed: () {
+            widget.device.clearData();
+          },
+          child: Text('Clear Data'),
+        ),
+      ],
+    );
   }
-}
-
-class ShowStatus extends StatefulWidget {
-  const ShowStatus({super.key});
-
-  @override
-  State<ShowStatus> createState() => _ShowStatusState();
-}
-
-class _ShowStatusState extends State<ShowStatus> {
-  @override
-  Widget build(BuildContext context) {
-    return const Placeholder();
-  }
-}
-
-void _onNewData(DateTime timestamp, List<double> values) {
-  print(
-    't=${timestamp.toIso8601String()}  value=${values.map((v) => v.toStringAsFixed(3)).join(', ')}',
-  );
-}
-
-Future<void> _connect() async {
-  try {
-    final device = B24ForceSensor();
-    device.connect(pinNumber: );
-    DevicesProvider.instance.add(device);
-
-    // Listen to incoming data
-    device.onNewData.listen(_onNewData);
-  } catch (e) {
-    print('Error: $e');
-  }
-}
-
-Future<void> _disconnect() async {
-  try {
-    await sensor.stopReading();
-    await sensor.disconnect();
-    print('Disconnected cleanly.');
-  } catch (e) {
-    print('Error during disconnection: $e');
-  }
-}
-
-Future<void> _startReading() async {
-  // Wait 10 seconds
-  await sensor.startReading();
-  print('Streaming data for 10 seconds...\n');
-  await Future.delayed(Duration(seconds: 10));
-
-  print('\nStopping...');
-
-  await subscription.cancel();
-  await sensor.stopReading();
-  await sensor.disconnect();
-
-  print('Disconnected cleanly.');
 }

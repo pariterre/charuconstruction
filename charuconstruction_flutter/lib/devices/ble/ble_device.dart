@@ -3,30 +3,40 @@ import 'dart:typed_data';
 
 import 'package:charuconstruction_flutter/devices/ble/ble_exceptions.dart';
 import 'package:charuconstruction_flutter/devices/device.dart';
+import 'package:logging/logging.dart';
 import 'package:universal_ble/universal_ble.dart' as ble;
+
+final _logger = Logger('BleDevice');
 
 abstract class BleDevice extends Device {
   ble.BleDevice? _device;
-  bool isConnected = false;
-  bool isReading = false;
 
   @override
   String? get name => _device?.name;
 
   @override
-  String get macAddress => _device?.deviceId ?? '';
+  String? get macAddress => _device?.deviceId;
+
+  bool get deviceFound => _device != null;
+  bool get deviceNotFound => !deviceFound;
+
+  @override
+  bool isConnected = false;
+
+  @override
+  bool isReading = false;
 
   ///
   /// API METHODS
   ///
   @override
   Future<void> connect({int? pinNumber, int maxRetries = 10}) async {
-    print('Connecting to ${_device?.name} (${_device?.deviceId})...');
+    _logger.info('Connecting to ${_device?.name} (${_device?.deviceId})...');
     int retry = 0;
     while (!isConnected && retry < maxRetries) {
       try {
         // If the device is not set, search for it
-        if (_device == null) await findDevice();
+        if (deviceNotFound) await scan();
 
         await _device?.connect();
         if (!await _device!.isConnected) throw Exception('Connection failed');
@@ -36,7 +46,9 @@ abstract class BleDevice extends Device {
         await _updateSubscribeStatus(isSubscribing: true);
         isConnected = true;
       } catch (e) {
-        print('Failed to connect ($e), retrying... ($retry/$maxRetries)');
+        _logger.warning(
+          'Failed to connect ($e), retrying... ($retry/$maxRetries)',
+        );
         _device = null; // Reset device to trigger a new scan
 
         await Future.delayed(Duration(seconds: 1));
@@ -72,7 +84,7 @@ abstract class BleDevice extends Device {
     }
 
     isReading = true;
-    print('Reading data!');
+    _logger.info('Reading data!');
   }
 
   @override
@@ -84,7 +96,7 @@ abstract class BleDevice extends Device {
     }
 
     isReading = false;
-    print('Stopped reading data!');
+    _logger.info('Stopped reading data!');
   }
 
   Future<void> _updateSubscribeStatus({required bool isSubscribing}) async {
@@ -147,8 +159,8 @@ abstract class BleDevice extends Device {
     );
   }
 
-  Future<void> findDevice() async {
-    print('Scanning for BLE devices...');
+  Future<void> scan() async {
+    _logger.info('Scanning for BLE devices...');
 
     // Check Bluetooth is available and powered on
     ble.AvailabilityState state =
@@ -173,7 +185,7 @@ abstract class BleDevice extends Device {
 
     await ble.UniversalBle.stopScan();
 
-    print('Found device: $name ($macAddress)');
+    _logger.info('Found device: $name ($macAddress)');
   }
 
   Future<void> sendPinNumber(int pin) async {
@@ -218,6 +230,12 @@ abstract class BleDevice extends Device {
 
   static List<int> packU8(int x) {
     return [x & 0xFF];
+  }
+
+  static List<int> packF32(double x) {
+    final b = ByteData(4);
+    b.setFloat32(0, x, Endian.big);
+    return b.buffer.asUint8List();
   }
 
   static double unpackF32(List<int> bytes) {

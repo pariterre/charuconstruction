@@ -6,6 +6,14 @@ class BleDeviceBluetoothOff implements Exception {
   String toString() => 'BleDeviceBluetoothOff: $message';
 }
 
+class BleDeviceNotFound implements Exception {
+  final String message;
+  BleDeviceNotFound(this.message);
+
+  @override
+  String toString() => 'BleDeviceNotFound: $message';
+}
+
 class BleDeviceCouldNotConnect implements Exception {
   final String message;
   BleDeviceCouldNotConnect(this.message);

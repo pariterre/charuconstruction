@@ -1,6 +1,32 @@
+import 'package:charuconstruction_flutter/devices/b24_force_sensor.dart';
 import 'package:charuconstruction_flutter/devices/device.dart';
 
+const useB24Mocker = bool.fromEnvironment(
+  'CHARUCONSTRUCTION_USE_B24_MOCKER',
+  defaultValue: false,
+);
+
+enum AvailableDevices {
+  b24;
+
+  Device _factory() {
+    // Setup the device
+    final device = switch (this) {
+      AvailableDevices.b24 =>
+        useB24Mocker ? B24ForceSensorMocker() : B24ForceSensor(),
+    };
+
+    // Return the device ready to be used
+    return device;
+  }
+}
+
 class DevicesProvider {
+  /// The available devices
+  final _devices = {
+    for (var device in AvailableDevices.values) device: device._factory(),
+  };
+
   ///
   /// Prepare the singleton instance
   ///
@@ -9,18 +35,14 @@ class DevicesProvider {
   static DevicesProvider get instance => _instance;
 
   ///
-  /// The list of available devices.
+  /// A specific device
+  /// [device] is the device to get
   ///
-  final List<Device> _devices = [];
-  List<Device> get devices => _devices;
+  Device device(AvailableDevices device) => _devices[device]!;
 
   ///
-  /// Add a device to the list of available devices.
+  /// A list of the connected devices
   ///
-  Future<void> add(Device device) async {
-    if (_devices.contains(device)) {
-      throw Exception('Device already exists in the provider');
-    }
-    _devices.add(device);
-  }
+  List<Device> get connectedDevices =>
+      _devices.values.where((d) => d.isConnected).toList();
 }

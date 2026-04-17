@@ -22,10 +22,10 @@ abstract class Device {
   final List<List<double>> _data = [];
   List<List<double>> get dataVector => _data;
 
-  void pushData(DateTime timestamp, List<double> values) {
+  Future<void> pushData(DateTime timestamp, List<double> values) async {
     _timeVector.add(timestamp);
     _data.add(values);
-    onNewData.notifyListeners((listener) => listener(timestamp, values));
+    await onNewData.notifyListeners((listener) => listener(timestamp, values));
   }
 
   ///
@@ -42,6 +42,13 @@ abstract class Device {
   int get channelCount;
 
   ///
+  /// Whether the device is currently connected.
+  ///
+  bool get isConnected;
+  bool get isDisconnected => !isConnected;
+  bool get isNotConnected => isDisconnected;
+
+  ///
   /// Connect to the device. If the device requires a pin, it should be provided as an argument.
   ///
   Future<void> connect();
@@ -50,6 +57,12 @@ abstract class Device {
   /// Disconnect from the device.
   ///
   Future<void> disconnect();
+
+  ///
+  /// Whether the device is currently reading data.
+  ///
+  bool get isReading;
+  bool get isNotReading => !isReading;
 
   ///
   /// Start reading data from the device. The device should be configured to send data at this point.

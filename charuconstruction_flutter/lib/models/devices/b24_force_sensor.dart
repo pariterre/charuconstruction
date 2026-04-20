@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:charuconstruction_flutter/devices/ble/ble_device.dart';
+import 'package:charuconstruction_flutter/models/devices/ble/ble_device.dart';
 import 'package:logging/logging.dart';
 import 'package:universal_ble/universal_ble.dart' as ble;
 

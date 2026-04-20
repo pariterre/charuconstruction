@@ -1,0 +1,158 @@
+import 'package:charuconstruction_flutter/models/data/time_series_data.dart';
+import 'package:charuconstruction_flutter/providers/devices_provider.dart';
+import 'package:collection/collection.dart';
+import 'package:path_provider/path_provider.dart';
+
+class Data {
+  DateTime _initialTime;
+  DateTime get initialTime => _initialTime;
+  final Map<AvailableDevices, TimeSeriesData> _devices;
+  Map<AvailableDevices, TimeSeriesData> get devices =>
+      Map.unmodifiable(_devices);
+
+  ///
+  /// Constructor
+  ///
+
+  ///
+  /// Create a new data instance with the given initial time and whether the data is from live data or not
+  /// [initialTime] is the initial time of the data, used to compute the time vector of the devices
+  /// [isFromLiveData] is whether the data is from live data or not, used to compute the time offset of the devices
+  ///
+  Data({required DateTime initialTime, required bool isFromLiveData})
+    : _initialTime = initialTime,
+      _devices = {};
+
+  ///
+  /// Create a new data instance from a copy of another data instance, with the option to set whether the data is from live data or not
+  /// [initialTime] is the initial time of the data, used to compute the time vector of the devices
+  /// [devices] is the list of devices to copy
+  Data._fromCopy({
+    required DateTime initialTime,
+    required Map<AvailableDevices, TimeSeriesData> devices,
+  }) : _initialTime = initialTime,
+       _devices = devices;
+
+  ///
+  /// API METHODS
+  ///
+
+  ///
+  /// Add a device to the data pool
+  ///
+  void add(AvailableDevices device, TimeSeriesData data) {
+    if (_devices.containsKey(device)) {
+      throw Exception('Device with name ${device.name} already exists.');
+    }
+    _devices[device] = data;
+  }
+
+  ///
+  /// Whether any device are connected and have data
+  ///
+  bool get isEmpty =>
+      _devices.isEmpty || _devices.values.every((device) => device.isEmpty);
+  bool get isNotEmpty => !isEmpty;
+
+  ///
+  /// Clear the data and reset the initial time if provided
+  ///
+  void clear({DateTime? initialTime}) {
+    _initialTime = initialTime ?? _initialTime;
+
+    for (final device in _devices.values) {
+      device.clear();
+    }
+    _devices.clear();
+  }
+
+  ///
+  /// Append data from a JSON object, the JSON object should be in the format of:
+  /// {
+  ///   "device_name": {
+  ///     "name": "device_name",
+  ///     "data": [
+  ///       [time, channel_1_value, channel_2_value, ...],
+  ///       [time, channel_1_value, channel_2_value, ...],
+  ///       ...
+  ///     ]
+  ///   }
+  /// }
+  /// The time should be in milliseconds since the initial time of the data, and
+  /// the channel values should be in the same order as the channels of the device
+  void appendFromJson(Map<String, dynamic> json) {
+    for (final data in json.values) {
+      final key = _devices.keys.firstWhereOrNull((d) => d.name == data['name']);
+      if (key == null) {
+        throw Exception(
+          'Device with name ${data['name']} not found in devices list.',
+        );
+      }
+
+      _devices[key]!.appendFromJson(data['data'] as Map<String, dynamic>);
+    }
+  }
+
+  ///
+  /// Drop data before a certain time, the time should be in the same format as
+  /// the time vector of the devices (milliseconds since the initial time of the data)
+  ///
+  void dropBefore(DateTime t) {
+    for (final device in _devices.values) {
+      device.dropBefore(
+        (t.millisecondsSinceEpoch - initialTime.millisecondsSinceEpoch)
+            .toDouble(),
+      );
+    }
+  }
+
+  ///
+  /// Drop data after a certain time, the time should be in the same format as
+  /// the time vector of the devices (milliseconds since the initial time of the data)
+  ///
+  void dropAfter(DateTime t) {
+    for (final device in _devices.values) {
+      device.dropAfter(
+        (t.millisecondsSinceEpoch - initialTime.millisecondsSinceEpoch)
+            .toDouble(),
+      );
+    }
+  }
+
+  ///
+  /// Save the data to files, the files will be saved in a folder named after
+  /// the current date and time in the format of "yyyy-MM-dd_HH-mm-ss" in the
+  /// Application Documents directory, and each device will be saved in a separate
+  /// CSV file named after the device name
+  ///
+  Future<void> toFiles() async {
+    final baseDir = await getApplicationDocumentsDirectory();
+    final folderName = DateTime.now()
+        .toIso8601String()
+        .replaceAll(':', '-')
+        .split('.')
+        .first;
+    final folderPath = '${baseDir.path}/$folderName/';
+
+    await Future.wait([
+      for (final key in _devices.keys)
+        _devices[key]!.toFile('$folderPath/${key.name}.csv'),
+    ]);
+  }
+
+  ///
+  /// Create a copy of the data, with the option to set whether the change the [isFromLiveData]
+  /// property of the devices or not
+  ///
+  Data copy({bool isFromLiveData = false}) => Data._fromCopy(
+    initialTime: initialTime,
+    devices: Map.fromEntries(
+      _devices.entries.map(
+        (entry) => MapEntry(
+          entry.key,
+          entry.value.copy(isFromLiveData: isFromLiveData),
+        ),
+      ),
+    ),
+  );
+}

@@ -1,5 +1,5 @@
-import 'package:charuconstruction_flutter/devices/b24_force_sensor.dart';
-import 'package:charuconstruction_flutter/devices/ble/ble_exceptions.dart';
+import 'package:charuconstruction_flutter/models/devices/b24_force_sensor.dart';
+import 'package:charuconstruction_flutter/models/devices/ble/ble_exceptions.dart';
 import 'package:charuconstruction_flutter/providers/devices_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -212,6 +212,7 @@ class _B24ManagementScreenState extends State<_B24ManagementScreen> {
       _errorMessage = 'An unexpected error occurred: $e';
     }
 
+    if (!mounted) return;
     setState(() {
       _isBusy = false;
     });

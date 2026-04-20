@@ -1,31 +1,28 @@
 import 'dart:async';
 
+import 'package:charuconstruction_flutter/models/data/time_series_data.dart';
 import 'package:charuconstruction_flutter/utils/generic_listener.dart';
 
 abstract class Device {
   ///
-  /// The time when the [startReading] was called. This can be used to calculate the relative time of subsequent data points.
-  /// It can be reset by calling [clearData].
-  ///
-  DateTime _startingTime = DateTime.now();
-  DateTime get startingTime => _startingTime;
+  /// Data holder for the current device
+  late final _data = TimeSeriesData(
+    channelCount: channelCount,
+    isFromLiveData: true,
+  );
+  TimeSeriesData get data => _data;
 
   ///
-  /// The time vector of the data received from the device. This vector has the same length as the [dataVector].
-  ///
-  final List<DateTime> _timeVector = [];
-  List<DateTime> get timeVector => _timeVector;
-
-  ///
-  /// The data vector of the data received from the device. The outer length of this vector has the same length as the [timeVector].
-  /// The inner length of this vector depends on the device (i.e. the channel count).
-  final List<List<double>> _data = [];
-  List<List<double>> get dataVector => _data;
-
+  /// The data vector of the data received from the device. This method is expected
+  /// to be called by the device implementation when new data is received.
+  /// [timestamp] is the timestamp of the data
+  /// [values] is the list of values of the data, in the same order as the channels of the device
   Future<void> pushData(DateTime timestamp, List<double> values) async {
-    _timeVector.add(timestamp);
-    _data.add(values);
-    await onNewData.notifyListeners((listener) => listener(timestamp, values));
+    _data.appendFromJson({
+      'data': [
+        [timestamp.millisecondsSinceEpoch, values],
+      ],
+    });
   }
 
   ///
@@ -82,15 +79,6 @@ abstract class Device {
   Future<void> stopReading();
 
   void clearData() {
-    _startingTime = DateTime.now();
-    _timeVector.clear();
     _data.clear();
   }
-
-  ///
-  /// Stream of incoming data from the device. The data should be emitted as [timestamp], [values] by the device implementation
-  /// when new data is received.
-  ///
-  final onNewData =
-      GenericListener<void Function(DateTime timestamp, List<double> values)>();
 }

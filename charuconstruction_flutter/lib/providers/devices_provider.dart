@@ -1,5 +1,6 @@
-import 'package:charuconstruction_flutter/devices/b24_force_sensor.dart';
-import 'package:charuconstruction_flutter/devices/device.dart';
+import 'package:charuconstruction_flutter/models/data/data.dart';
+import 'package:charuconstruction_flutter/models/devices/b24_force_sensor.dart';
+import 'package:charuconstruction_flutter/models/devices/device.dart';
 import 'package:charuconstruction_flutter/utils/generic_listener.dart';
 
 const useB24Mocker = bool.fromEnvironment(
@@ -35,15 +36,32 @@ enum AvailableDevices {
 }
 
 class DevicesProvider {
+  ///
   /// The available devices
-  final _devices = {
-    for (var device in AvailableDevices.values) device: device._factory(),
-  };
+  ///
+  final _devices = <AvailableDevices, Device>{};
+
+  ///
+  /// The data collected from the devices
+  ///
+  final _data = Data(initialTime: DateTime.now(), isFromLiveData: true);
 
   ///
   /// Prepare the singleton instance
   ///
-  DevicesProvider._();
+  DevicesProvider._() {
+    for (final device in AvailableDevices.values) {
+      final newDevice = device._factory();
+
+      // Add the device to the list of devices
+      _devices[device] = newDevice;
+
+      // Add a reference to the device data in the data pool
+      _data.add(device, newDevice.data);
+      // Reset the initial time for all the devices
+      _data.clear(initialTime: DateTime.now());
+    }
+  }
   static final DevicesProvider _instance = DevicesProvider._();
   static DevicesProvider get instance => _instance;
 

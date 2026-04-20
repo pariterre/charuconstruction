@@ -1,8 +1,9 @@
 import 'dart:ui';
 
-import 'package:charuconstruction_flutter/devices/ble/manage_ble_device_dialog.dart';
-import 'package:charuconstruction_flutter/devices/device.dart';
+import 'package:charuconstruction_flutter/models/devices/ble/manage_ble_device_dialog.dart';
+import 'package:charuconstruction_flutter/models/devices/device.dart';
 import 'package:charuconstruction_flutter/providers/devices_provider.dart';
+import 'package:charuconstruction_flutter/widgets/data_graph.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 
@@ -156,55 +157,57 @@ class ShowCurrentValue extends StatefulWidget {
 }
 
 class _ShowCurrentValueState extends State<ShowCurrentValue> {
+  late final graphController = DataGraphController(data: widget.device.data);
+
   @override
   void initState() {
     super.initState();
 
-    widget.device.onNewData.listen(_onNewData);
+    widget.device.data.onNewData.listen(_onNewData);
   }
 
   @override
   void dispose() {
-    widget.device.onNewData.cancel(_onNewData);
+    widget.device.data.onNewData.cancel(_onNewData);
 
     super.dispose();
   }
 
-  void _onNewData(DateTime timestamp, List<double> values) {
+  void _onNewData() {
     setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentTime = widget.device.timeVector.isNotEmpty
-        ? widget.device.timeVector.last
-                  .difference(widget.device.startingTime)
-                  .inMilliseconds
-                  .toDouble() /
-              1000
-        : null;
-    final currentValues = widget.device.dataVector.isNotEmpty
-        ? widget.device.dataVector.last
-        : <double>[];
+    final time = widget.device.data.time;
+    final currentTime = time.isNotEmpty ? time.last.toDouble() / 1000 : null;
+    final data = widget.device.data.getData();
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text('Current value for ${widget.device.name}: '),
-        if (currentTime != null && currentValues.isNotEmpty)
-          Text(
-            'at ${currentTime.toStringAsFixed(1)}s: [${currentValues.map((v) => v.toStringAsFixed(3)).join(', ')}]',
-          )
-        else
-          Text('No data received yet'),
-        SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: () {
-            widget.device.clearData();
-          },
-          child: Text('Clear Data'),
-        ),
-      ],
+    final lastValues = data.map(
+      (channel) => channel.isNotEmpty ? channel.last : double.nan,
+    );
+
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('Current value for ${widget.device.name}: '),
+          if (currentTime != null)
+            Text(
+              'at ${currentTime.toStringAsFixed(1)}s: [${lastValues.map((v) => v.toStringAsFixed(3)).join(', ')}]',
+            )
+          else
+            Text('No data received yet'),
+          SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () {
+              widget.device.clearData();
+            },
+            child: Text('Clear Data'),
+          ),
+          DataGraph(controller: graphController),
+        ],
+      ),
     );
   }
 }

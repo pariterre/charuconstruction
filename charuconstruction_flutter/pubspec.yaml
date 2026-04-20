@@ -15,6 +15,7 @@ dependencies:
   collection: ^1.19.1
   path_provider: ^2.1.5
   universal_ble: ^1.2.0
+  # opencv_dart: ^2.2.1+4
   fl_chart: ^1.2.0
 
 

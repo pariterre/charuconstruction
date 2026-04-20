@@ -48,8 +48,7 @@ abstract class Device {
   bool get isDisconnected => !isConnected;
   bool get isNotConnected => isDisconnected;
 
-  GenericListener<void Function(bool isConnected)>
-  get onConnectionStatusChanged =>
+  final onConnectionStatusChanged =
       GenericListener<void Function(bool isConnected)>();
 
   ///
@@ -68,7 +67,7 @@ abstract class Device {
   bool get isReading;
   bool get isNotReading => !isReading;
 
-  GenericListener<void Function(bool isReading)> get onReadingStatusChanged =>
+  final onReadingStatusChanged =
       GenericListener<void Function(bool isReading)>();
 
   ///

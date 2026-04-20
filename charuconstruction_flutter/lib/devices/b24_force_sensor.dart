@@ -247,7 +247,6 @@ class B24ForceSensorMocker extends B24ForceSensor {
     _setupTimerData();
 
     await onConnectionStatusChanged.notifyListeners(
-      // TODO Check why this does not work
       (listener) => listener(isConnected),
     );
   }

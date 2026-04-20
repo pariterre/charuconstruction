@@ -187,17 +187,17 @@ class _ShowCurrentValueState extends State<ShowCurrentValue> {
         ? widget.device.dataVector.last
         : <double>[];
 
-    return Row(
+    return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text('Current value for ${widget.device.name}: '),
         if (currentTime != null && currentValues.isNotEmpty)
           Text(
-            'at ${currentTime.toStringAsFixed(1)}: [${currentValues.map((v) => v.toStringAsFixed(3)).join(', ')}]',
+            'at ${currentTime.toStringAsFixed(1)}s: [${currentValues.map((v) => v.toStringAsFixed(3)).join(', ')}]',
           )
         else
           Text('No data received yet'),
-        SizedBox(width: 20),
+        SizedBox(height: 20),
         ElevatedButton(
           onPressed: () {
             widget.device.clearData();

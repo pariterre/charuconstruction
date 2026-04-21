@@ -90,7 +90,7 @@ packages:
     source: hosted
     version: "1.0.9"
   dartcv4:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: dartcv4
       sha256: "5764d13550055da3bb35ca28e6866b837579dfb4b594582b7a7753785ca5dfef"

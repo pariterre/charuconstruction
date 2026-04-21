@@ -15,7 +15,8 @@ dependencies:
   collection: ^1.19.1
   path_provider: ^2.1.5
   universal_ble: ^1.2.0
-  opencv_dart: ^2.2.1+4
+  opencv_dart: ^2.2.1+1
+  dartcv4: ^2.2.1+1
   fl_chart: ^1.2.0
 
 
@@ -26,3 +27,28 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+
+hooks:
+  user_defines:
+    dartcv4:
+      include_modules: 
+        - calib3d
+        - contrib
+        - dnn
+        - features2d
+        - freetype
+        - highgui
+        - imgcodecs
+        - imgproc
+        - objdetect
+        - photo
+        - stitching
+        - video
+        - videoio
+        - aruco
+        - img_hash
+        - quality
+        - wechat_qrcode
+        - ximgproc
+        - xobjdetect

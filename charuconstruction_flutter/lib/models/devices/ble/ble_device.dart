@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:charuconstruction_flutter/models/devices/ble/ble_device_interface.dart';
+import 'package:charuconstruction_flutter/models/devices/ble/universalr_ble_interface.dart';
 import 'package:charuconstruction_flutter/models/devices/ble/ble_exceptions.dart';
 import 'package:charuconstruction_flutter/models/devices/device.dart';
 import 'package:logging/logging.dart';
@@ -9,7 +9,7 @@ import 'package:logging/logging.dart';
 final _logger = Logger('BleDevice');
 
 abstract class BleDevice extends Device {
-  CharuconstructionBleDevice? _device;
+  UniversalBleDeviceInterface? _device;
 
   @override
   String? get name => _device?.name;
@@ -189,8 +189,8 @@ abstract class BleDevice extends Device {
   /// This can be used to perform specific actions when subscribing to certain characteristics (e.g., initializing data structures, etc.).
   ///
   Future<void> updateSubscribeStatus({
-    required CharuconstructionBleService service,
-    required CharuconstructionBleCharacteristic characteristic,
+    required UniversalBleServiceInterface service,
+    required UniversalBleCharacteristicInterface characteristic,
     required bool isSubscribing,
   }) async {
     throw UnimplementedError(
@@ -203,33 +203,26 @@ abstract class BleDevice extends Device {
 
     // Check Bluetooth is available and powered on
     AvailabilityState state =
-        await CharuconstructionUniversalBle.getBluetoothAvailabilityState();
+        await UniversalBleInterface.getBluetoothAvailabilityState();
     // Start scan only if Bluetooth is powered on
     if (state != AvailabilityState.poweredOn) {
       throw BleDeviceBluetoothOff('Bluetooth is not powered on');
     }
 
-    final device = Completer<CharuconstructionBleDevice>();
-    CharuconstructionUniversalBle.onScanResult =
-        (CharuconstructionBleDevice bleDevice) {
-          print('coucou');
-          device.complete(bleDevice);
-        };
+    final device = Completer<UniversalBleDeviceInterface>();
+    UniversalBleInterface.onScanResult =
+        (UniversalBleDeviceInterface bleDevice) => device.complete(bleDevice);
 
     // Request permissions in foreground (e.g., during app setup)
-    await CharuconstructionUniversalBle.requestPermissions();
+    await UniversalBleInterface.requestPermissions();
 
-    await CharuconstructionUniversalBle.startScan(
-      scanFilter: ScanFilter(
-        withNamePrefix: [
-          //TODO Keep this: deviceNamePrefix
-        ],
-      ),
+    await UniversalBleInterface.startScan(
+      scanFilter: ScanFilter(withNamePrefix: [deviceNamePrefix]),
     );
 
     _device = await device.future;
 
-    await CharuconstructionUniversalBle.stopScan();
+    await UniversalBleInterface.stopScan();
 
     _logger.info('Found device: $name ($macAddress)');
   }
@@ -272,6 +265,11 @@ abstract class BleDevice extends Device {
     final b = ByteData(4);
     b.setUint32(0, x, Endian.big);
     return b.buffer.asUint8List();
+  }
+
+  static int unpackU32(List<int> bytes) {
+    final b = ByteData.sublistView(Uint8List.fromList(bytes));
+    return b.getUint32(0, Endian.big);
   }
 
   static List<int> packU8(int x) {

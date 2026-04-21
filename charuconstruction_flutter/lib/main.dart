@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'dart:ui';
 
 import 'package:charuconstruction_flutter/models/charucos/charuco.dart';
+import 'package:charuconstruction_flutter/models/devices/b24_force_sensor.dart';
 import 'package:charuconstruction_flutter/models/devices/ble/manage_ble_device_dialog.dart';
+import 'package:charuconstruction_flutter/models/devices/ble/universalr_ble_interface.dart';
 import 'package:charuconstruction_flutter/models/devices/device.dart';
 import 'package:charuconstruction_flutter/providers/devices_provider.dart';
 import 'package:charuconstruction_flutter/widgets/data_graph.dart';
@@ -15,6 +17,12 @@ Future<void> main() async {
   //     '{"vertical_squares_count": 6,"horizontal_squares_count": 4,"square_len": 0.018,"marker_len": 0.014,"resolution": "DPI_300","aruco_dict": 15,"seed": 24}',
   //   ),
   // );
+
+  UniversalBleInterface.useMocker = const bool.fromEnvironment(
+    'CHARUCONSTRUCTION_USE_BLE_MOCKER',
+    defaultValue: false,
+  );
+  UniversalBleInterface.mockedDevices.add(B24MockCharuconstructionBleDevice());
 
   // Setup logging
   Logger.root.level = Level.ALL;

@@ -4,7 +4,7 @@ import 'dart:typed_data';
 
 import 'package:charuconstruction_flutter/models/devices/ble/ble_device.dart';
 import 'package:logging/logging.dart';
-import 'package:charuconstruction_flutter/models/devices/ble/ble_device_interface.dart';
+import 'package:charuconstruction_flutter/models/devices/ble/universalr_ble_interface.dart';
 
 final _logger = Logger('B24ForceSensor');
 
@@ -197,34 +197,90 @@ class _B24Helpers {
   static const value = 'a9712442-a0e8-11e6-bdf4-0800200c9a66';
 }
 
-class B24MockCharuconstructionBleDevice extends CharuconstructionBleDevice {
-  B24MockCharuconstructionBleDevice() : super(deviceId: '00:11:22:33:44:55');
+class B24MockCharuconstructionBleDevice extends UniversalBleDeviceInterface {
+  B24MockCharuconstructionBleDevice()
+    : super(isMocker: true, deviceId: '00:11:22:33:44:55');
 
   @override
   String? get name => 'B24 Mocked Device';
 
   @override
-  Future<List<CharuconstructionBleService>> discoverServices() async => [
-    CharuconstructionBleService(_B24Helpers.configuration, [
-      CharuconstructionBleCharacteristic(_B24Helpers.dataRate, [], []),
-      CharuconstructionBleCharacteristic(_B24Helpers.resolution, [], []),
-      CharuconstructionBleCharacteristic(_B24Helpers.pin, [], []),
-    ]),
-    CharuconstructionBleService(_B24Helpers.notifications, [
-      CharuconstructionBleCharacteristic(_B24Helpers.status, [], []),
-      CharuconstructionBleCharacteristic(
+  Future<List<UniversalBleServiceInterface>> discoverServices() async => [
+    UniversalBleServiceInterface(_B24Helpers.configuration, [
+      UniversalBleCharacteristicInterface(
+        _B24Helpers.dataRate,
+        [],
+        [],
+        device: this,
+        onConfigureMock: (value, {bool withResponse = false}) {
+          if (value.length != 4) return;
+          int intValue = BleDevice.unpackU32(value);
+          _logger.info('Mock configure data rate to $intValue ms');
+          _updatePeriod(Duration(milliseconds: intValue));
+        },
+      ),
+      UniversalBleCharacteristicInterface(
+        _B24Helpers.resolution,
+        [],
+        [],
+        device: this,
+      ),
+      UniversalBleCharacteristicInterface(
+        _B24Helpers.pin,
+        [],
+        [],
+        device: this,
+      ),
+    ], device: this),
+    UniversalBleServiceInterface(_B24Helpers.notifications, [
+      UniversalBleCharacteristicInterface(
+        _B24Helpers.status,
+        [],
+        [],
+        device: this,
+      ),
+      UniversalBleCharacteristicInterface(
         _B24Helpers.value,
         [],
         [],
-        onValueReceivedMock: Stream.periodic(
-          Duration(
-            milliseconds: 1000 ~/ B24SampleRateConfiguration.fastest.value,
-          ),
-          (count) => Uint8List.fromList(
-            BleDevice.packF32(5000 * (1 + 0.5 * sin(count / 10))),
-          ),
-        ),
+        onValueReceivedMock: _mockValueStream,
+        device: this,
       ),
-    ]),
+    ], device: this),
   ];
+
+  StreamController<Uint8List>? _controller;
+  Timer? _timer;
+  Duration _currentPeriod = Duration(milliseconds: 100);
+
+  Stream<Uint8List> get _mockValueStream {
+    _controller ??= StreamController<Uint8List>.broadcast(
+      onListen: _startTimer,
+      onCancel: _stopTimer,
+    );
+    return _controller!.stream;
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(_currentPeriod, (timer) {
+      final count = timer.tick;
+      _controller?.add(
+        Uint8List.fromList(
+          BleDevice.packF32(5000 * (1 + 0.5 * sin(count / 10))),
+        ),
+      );
+    });
+  }
+
+  void _stopTimer() {
+    _timer?.cancel();
+  }
+
+  void _updatePeriod(Duration newPeriod) {
+    _currentPeriod = newPeriod;
+    if (_controller?.hasListener ?? false) {
+      _startTimer(); // restart with new period
+    }
+  }
 }

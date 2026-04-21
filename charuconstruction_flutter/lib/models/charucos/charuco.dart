@@ -70,6 +70,8 @@ class Charuco {
       squareCount: horizontalSquaresCount * verticalSquaresCount,
       seed: seed,
     );
+
+    // TODO: Complete here with CHARUCO_BOARD creation, using the reordered arucoDict
   }
 
   static Charuco fromSerialized(Map<String, dynamic> json) {

@@ -1,7 +1,5 @@
-import 'dart:convert';
 import 'dart:ui';
 
-import 'package:charuconstruction_flutter/models/charucos/charuco.dart';
 import 'package:charuconstruction_flutter/models/devices/b24_force_sensor.dart';
 import 'package:charuconstruction_flutter/models/devices/ble/manage_ble_device_dialog.dart';
 import 'package:charuconstruction_flutter/models/devices/ble/universalr_ble_interface.dart';
@@ -12,12 +10,6 @@ import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 
 Future<void> main() async {
-  Charuco.fromSerialized(
-    jsonDecode(
-      '{"vertical_squares_count": 6,"horizontal_squares_count": 4,"square_len": 0.018,"marker_len": 0.014,"resolution": "DPI_300","aruco_dict": 15,"seed": 24}',
-    ),
-  );
-
   UniversalBleInterface.useMocker = const bool.fromEnvironment(
     'CHARUCONSTRUCTION_USE_BLE_MOCKER',
     defaultValue: false,

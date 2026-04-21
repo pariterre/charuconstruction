@@ -117,7 +117,19 @@ class UniversalBleDeviceInterface extends BleDevice {
 
   ///
   /// This should be implemented by the mock devices
-  Future<List<UniversalBleServiceInterface>> discoverServices() async => [];
+  Future<List<UniversalBleServiceInterface>> discoverServices() async {
+    if (isMocker) return [];
+    final services = await BleDeviceExtension(this).discoverServices();
+    return services
+        .map(
+          (s) => UniversalBleServiceInterface(
+            s.uuid,
+            s.characteristics,
+            device: this,
+          ),
+        )
+        .toList();
+  }
 }
 
 class UniversalBleServiceInterface extends BleService {
@@ -137,6 +149,7 @@ class UniversalBleServiceInterface extends BleService {
           c.uuid,
           c.properties,
           c.descriptors,
+          metaData: c.metaData,
           onValueReceivedMock: (_device?.isMocker ?? false)
               ? (c as UniversalBleCharacteristicInterface).onValueReceivedMock
               : null,
@@ -152,6 +165,10 @@ class UniversalBleServiceInterface extends BleService {
 
 class UniversalBleCharacteristicInterface extends BleCharacteristic {
   final UniversalBleDeviceInterface? _device;
+
+  final ({String deviceId, String serviceId})? _metaData;
+  @override
+  ({String deviceId, String serviceId})? get metaData => _metaData;
 
   void Function(List<int> value, {bool withResponse})? onConfigureMock;
 
@@ -170,10 +187,12 @@ class UniversalBleCharacteristicInterface extends BleCharacteristic {
     super.uuid,
     super.properties,
     super.descriptors, {
+    ({String deviceId, String serviceId})? metaData,
     this.onConfigureMock,
     this.onValueReceivedMock,
     required UniversalBleDeviceInterface? device,
-  }) : _device = device;
+  }) : _device = device,
+       _metaData = metaData;
 
   Future<void> write(List<int> value, {bool withResponse = false}) async {
     return (_device?.isMocker ?? false)

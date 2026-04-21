@@ -3,11 +3,6 @@ import 'package:charuconstruction_flutter/models/devices/b24_force_sensor.dart';
 import 'package:charuconstruction_flutter/models/devices/device.dart';
 import 'package:charuconstruction_flutter/utils/generic_listener.dart';
 
-const useB24Mocker = bool.fromEnvironment(
-  'CHARUCONSTRUCTION_USE_B24_MOCKER',
-  defaultValue: false,
-);
-
 enum AvailableDevices {
   b24;
 

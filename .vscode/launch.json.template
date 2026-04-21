@@ -72,7 +72,7 @@
       },
       "toolArgs": [
         "--dart-define",
-        "CHARUCONSTRUCTION_USE_B24_MOCKER=< true | [false] >",
+        "CHARUCONSTRUCTION_USE_BLE_MOCKER=< true | [false] >",
       ],
     },
   ]

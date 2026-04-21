@@ -12,11 +12,11 @@ import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 
 Future<void> main() async {
-  // Charuco.fromSerialized(
-  //   jsonDecode(
-  //     '{"vertical_squares_count": 6,"horizontal_squares_count": 4,"square_len": 0.018,"marker_len": 0.014,"resolution": "DPI_300","aruco_dict": 15,"seed": 24}',
-  //   ),
-  // );
+  Charuco.fromSerialized(
+    jsonDecode(
+      '{"vertical_squares_count": 6,"horizontal_squares_count": 4,"square_len": 0.018,"marker_len": 0.014,"resolution": "DPI_300","aruco_dict": 15,"seed": 24}',
+    ),
+  );
 
   UniversalBleInterface.useMocker = const bool.fromEnvironment(
     'CHARUCONSTRUCTION_USE_BLE_MOCKER',

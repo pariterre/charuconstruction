@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:charuconstruction_flutter/models/devices/ble/ble_device.dart';
 import 'package:logging/logging.dart';
-import 'package:universal_ble/universal_ble.dart' as ble;
+import 'package:charuconstruction_flutter/models/devices/ble/ble_device_interface.dart';
 
 final _logger = Logger('B24ForceSensor');
 
@@ -131,8 +132,8 @@ class B24ForceSensor extends BleDevice {
 
   @override
   Future<void> updateSubscribeStatus({
-    required ble.BleService service,
-    required ble.BleCharacteristic characteristic,
+    required service,
+    required characteristic,
     required bool isSubscribing,
   }) async {
     if (service.uuid.toString() != _B24Helpers.notifications) return;
@@ -196,105 +197,34 @@ class _B24Helpers {
   static const value = 'a9712442-a0e8-11e6-bdf4-0800200c9a66';
 }
 
-class B24ForceSensorMocker extends B24ForceSensor {
-  bool _deviceFound = false;
-  bool _isConnected = false;
-  bool _isReading = false;
-  Timer? _timerData;
+class B24MockCharuconstructionBleDevice extends CharuconstructionBleDevice {
+  B24MockCharuconstructionBleDevice() : super(deviceId: '00:11:22:33:44:55');
 
   @override
-  String? get name => _deviceFound ? 'B24 Mock Sensor' : null;
+  String? get name => 'B24 Mocked Device';
 
   @override
-  String? get macAddress => _deviceFound ? '00:11:22:33:44:55' : null;
-
-  @override
-  bool get deviceFound => _deviceFound;
-
-  @override
-  bool get isConnected => _isConnected;
-
-  @override
-  bool get isReading => _isReading;
-
-  @override
-  Future<void> scan() async {
-    await Future.delayed(Duration(seconds: 1));
-    _deviceFound = true;
-  }
-
-  final _random = Random();
-
-  @override
-  Future<void> connect({int? pinNumber, int maxRetries = 10}) async {
-    if (pinNumber != 0) throw Exception('Invalid pin number');
-
-    await Future.delayed(Duration(seconds: 1));
-    _isConnected = true;
-    _isReading = false;
-    _setupTimerData();
-
-    onConnectionStatusChanged.notifyListeners(
-      (listener) => listener(isConnected),
-    );
-  }
-
-  @override
-  Future<void> disconnect() async {
-    await Future.delayed(Duration(seconds: 1));
-    _isConnected = false;
-    _isReading = false;
-    _setupTimerData();
-
-    await onConnectionStatusChanged.notifyListeners(
-      (listener) => listener(isConnected),
-    );
-  }
-
-  @override
-  Future<void> startReading() async {
-    await Future.delayed(Duration(seconds: 1));
-    _isReading = true;
-    _setupTimerData();
-
-    onReadingStatusChanged.notifyListeners((listener) => listener(isReading));
-  }
-
-  @override
-  Future<void> stopReading() async {
-    await Future.delayed(Duration(seconds: 1));
-    _isReading = false;
-    _setupTimerData();
-
-    onReadingStatusChanged.notifyListeners((listener) => listener(isReading));
-  }
-
-  void _setupTimerData() {
-    // Sanitize existing timer
-    if (_timerData != null) {
-      _timerData!.cancel();
-      _timerData = null;
-    }
-
-    // If we are not connected, we should not have a timer at all
-    if (!_isConnected) return;
-
-    // If we are connected but not reading, we should have a timer that simulates low-rate data
-
-    _timerData = Timer.periodic(
-      Duration(
-        milliseconds: _isReading
-            ? B24SampleRateConfiguration.fastest.value
-            : B24SampleRateConfiguration.batterySaver.value,
+  Future<List<CharuconstructionBleService>> discoverServices() async => [
+    CharuconstructionBleService(_B24Helpers.configuration, [
+      CharuconstructionBleCharacteristic(_B24Helpers.dataRate, [], []),
+      CharuconstructionBleCharacteristic(_B24Helpers.resolution, [], []),
+      CharuconstructionBleCharacteristic(_B24Helpers.pin, [], []),
+    ]),
+    CharuconstructionBleService(_B24Helpers.notifications, [
+      CharuconstructionBleCharacteristic(_B24Helpers.status, [], []),
+      CharuconstructionBleCharacteristic(
+        _B24Helpers.value,
+        [],
+        [],
+        onValueReceivedMock: Stream.periodic(
+          Duration(
+            milliseconds: 1000 ~/ B24SampleRateConfiguration.fastest.value,
+          ),
+          (count) => Uint8List.fromList(
+            BleDevice.packF32(5000 * (1 + 0.5 * sin(count / 10))),
+          ),
+        ),
       ),
-      (timer) async {
-        // Generate a random value based on a sine wave + some noise
-        final timestamp = DateTime.now();
-        double value =
-            5000 * (1 + 0.5 * sin(timestamp.millisecondsSinceEpoch / 1000)) +
-            500 * (_random.nextDouble() - 0.5);
-        await _onValue(BleDevice.packF32(value));
-      },
-    );
-  }
+    ]),
+  ];
 }

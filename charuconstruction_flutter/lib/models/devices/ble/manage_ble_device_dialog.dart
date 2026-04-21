@@ -179,7 +179,7 @@ class _B24ManagementScreenState extends State<_B24ManagementScreen> {
     } on BleDeviceBluetoothOff {
       _statusMessage = 'Scan failed';
       _errorMessage =
-          'B24 Sensor not found. Please make sure it is in pairing mode.';
+          'Bluetooth is turned off. Please turn it on and try again.';
     } on BleDeviceNotFound catch (e) {
       _statusMessage = 'Scan failed';
       _errorMessage = e.toString();
@@ -202,7 +202,7 @@ class _B24ManagementScreenState extends State<_B24ManagementScreen> {
     });
 
     try {
-      await _device.connect(pinNumber: 0);
+      await _device.connect(pinNumber: _pinNumber);
       _statusMessage = 'Connected to B24 Sensor: ${_device.name}';
     } on BleDeviceCouldNotConnect catch (e) {
       _statusMessage = 'Connection failed';

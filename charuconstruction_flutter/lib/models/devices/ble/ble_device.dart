@@ -1,15 +1,15 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:charuconstruction_flutter/models/devices/ble/ble_device_interface.dart';
 import 'package:charuconstruction_flutter/models/devices/ble/ble_exceptions.dart';
 import 'package:charuconstruction_flutter/models/devices/device.dart';
 import 'package:logging/logging.dart';
-import 'package:universal_ble/universal_ble.dart' as ble;
 
 final _logger = Logger('BleDevice');
 
 abstract class BleDevice extends Device {
-  ble.BleDevice? _device;
+  CharuconstructionBleDevice? _device;
 
   @override
   String? get name => _device?.name;
@@ -20,11 +20,13 @@ abstract class BleDevice extends Device {
   bool get deviceFound => _device != null;
   bool get deviceNotFound => !deviceFound;
 
+  bool _isConnected = false;
   @override
-  bool isConnected = false;
+  bool get isConnected => _isConnected;
 
+  bool _isReading = false;
   @override
-  bool isReading = false;
+  bool get isReading => _isReading;
 
   ///
   /// API METHODS
@@ -42,9 +44,7 @@ abstract class BleDevice extends Device {
         if (!await _device!.isConnected) throw Exception('Connection failed');
 
         // Finalize connection
-        if (pinNumber != null) await sendPinNumber(pinNumber);
-        await _updateSubscribeStatus(isSubscribing: true);
-        isConnected = true;
+        _isConnected = true;
       } catch (e) {
         _logger.warning(
           'Failed to connect ($e), retrying... ($retry/$maxRetries)',
@@ -57,8 +57,37 @@ abstract class BleDevice extends Device {
     }
 
     if (!isConnected) {
+      // Rescan for resetting the device as it was before the connection attempts, then throw the exception
+      await scan();
       throw BleDeviceCouldNotConnect(
         'Failed to connect after $maxRetries attempts.',
+      );
+    }
+
+    // If a pin number was provided, send it and subscribe to notifications. If any of these steps fail, disconnect and retry.
+    try {
+      if (pinNumber != null) await sendPinNumber(pinNumber);
+      await _updateSubscribeStatus(isSubscribing: true);
+    } catch (e) {
+      _logger.warning('Failed to finalize connection ($e), disconnecting...');
+
+      // If any of the finalization steps fail, disconnect and retry
+      try {
+        await _updateSubscribeStatus(isSubscribing: false);
+      } catch (e) {
+        _logger.warning('Failed to unsubscribe from notifications: $e');
+      }
+      try {
+        await _device?.disconnect();
+      } catch (e) {
+        _logger.warning('Failed to disconnect from device: $e');
+      }
+      _isConnected = false;
+    }
+
+    if (!isConnected) {
+      throw BleDeviceCouldNotConnect(
+        'Failed to finalize connection: device is connected but finalization steps failed.',
       );
     }
 
@@ -73,7 +102,7 @@ abstract class BleDevice extends Device {
       await stopReading();
       await _updateSubscribeStatus(isSubscribing: false);
       await _device?.disconnect();
-      isConnected = false;
+      _isConnected = false;
     } catch (e) {
       throw BleDeviceCouldNotDisconnect('Failed to disconnect: $e');
     }
@@ -91,7 +120,7 @@ abstract class BleDevice extends Device {
       );
     }
 
-    isReading = true;
+    _isReading = true;
     onReadingStatusChanged.notifyListeners((listener) => listener(isReading));
     _logger.info('Reading data!');
   }
@@ -104,7 +133,7 @@ abstract class BleDevice extends Device {
       );
     }
 
-    isReading = false;
+    _isReading = false;
     onReadingStatusChanged.notifyListeners((listener) => listener(isReading));
     _logger.info('Stopped reading data!');
   }
@@ -160,8 +189,8 @@ abstract class BleDevice extends Device {
   /// This can be used to perform specific actions when subscribing to certain characteristics (e.g., initializing data structures, etc.).
   ///
   Future<void> updateSubscribeStatus({
-    required ble.BleService service,
-    required ble.BleCharacteristic characteristic,
+    required CharuconstructionBleService service,
+    required CharuconstructionBleCharacteristic characteristic,
     required bool isSubscribing,
   }) async {
     throw UnimplementedError(
@@ -173,27 +202,34 @@ abstract class BleDevice extends Device {
     _logger.info('Scanning for BLE devices...');
 
     // Check Bluetooth is available and powered on
-    ble.AvailabilityState state =
-        await ble.UniversalBle.getBluetoothAvailabilityState();
+    AvailabilityState state =
+        await CharuconstructionUniversalBle.getBluetoothAvailabilityState();
     // Start scan only if Bluetooth is powered on
-    if (state != ble.AvailabilityState.poweredOn) {
+    if (state != AvailabilityState.poweredOn) {
       throw BleDeviceBluetoothOff('Bluetooth is not powered on');
     }
 
-    final device = Completer<ble.BleDevice>();
-    ble.UniversalBle.onScanResult = (ble.BleDevice bleDevice) =>
-        device.complete(bleDevice);
+    final device = Completer<CharuconstructionBleDevice>();
+    CharuconstructionUniversalBle.onScanResult =
+        (CharuconstructionBleDevice bleDevice) {
+          print('coucou');
+          device.complete(bleDevice);
+        };
 
     // Request permissions in foreground (e.g., during app setup)
-    await ble.UniversalBle.requestPermissions();
+    await CharuconstructionUniversalBle.requestPermissions();
 
-    await ble.UniversalBle.startScan(
-      scanFilter: ble.ScanFilter(withNamePrefix: [deviceNamePrefix]),
+    await CharuconstructionUniversalBle.startScan(
+      scanFilter: ScanFilter(
+        withNamePrefix: [
+          //TODO Keep this: deviceNamePrefix
+        ],
+      ),
     );
 
     _device = await device.future;
 
-    await ble.UniversalBle.stopScan();
+    await CharuconstructionUniversalBle.stopScan();
 
     _logger.info('Found device: $name ($macAddress)');
   }

@@ -14,8 +14,7 @@ enum AvailableDevices {
   Device _factory() {
     // Setup the device
     final device = switch (this) {
-      AvailableDevices.b24 =>
-        useB24Mocker ? B24ForceSensorMocker() : B24ForceSensor(),
+      AvailableDevices.b24 => B24ForceSensor(),
     };
 
     // Listen to status changes and notify the provider

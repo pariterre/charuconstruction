@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:charuconstruction_flutter/models/charucos/camera.dart';
 import 'package:charuconstruction_flutter/models/charucos/charuco_resolution.dart';
 import 'package:charuconstruction_flutter/models/charucos/frame.dart';
 import 'package:charuconstruction_flutter/utils/math.dart';
@@ -186,13 +187,13 @@ class Charuco {
   /// [rotationInitialGuess] Initial guess for rotation matrix.
   void detect({
     required Frame frame,
-    // required Camera camera,
+    required Camera camera,
     // required TranslationVector? translationInitialGuess,
     // required RotationMatrix? rotationInitialGuess,
   }) {
     final (charucoCorners, charucoIds) =
-        _detectMarkerCorners(frame: frame) ?? ([], []);
-    if (charucoCorners.isEmpty || charucoIds.isEmpty) return;
+        _detectMarkerCorners(frame: frame) ?? (null, null);
+    if (charucoCorners == null || charucoIds == null) return;
 
     // TODO: Implement initial guesses
     // Initial guesses
@@ -207,17 +208,19 @@ class Charuco {
     //     else np.zeros((3, 1))
     // )
 
-    // was_found, rotation, translation = cv2.aruco.estimatePoseCharucoBoard(
-    //     charucoCorners,
-    //     charucoIds,
-    //     board,
-    //     camera.matrix,
-    //     camera.distorsion_coefficients,
-    //     rotation_initial_guess,
-    //     translation_initial_guess,
-    // )
-    // if not was_found:
-    //     return None, None
+    final (rval, rvec, tvec) = estimatePoseCharucoBoard(
+      charucoCorners,
+      charucoIds,
+      board,
+      Mat.from2DList(camera.matrix, MatType(MatType.CV_64F)),
+      Mat.fromList(
+        1,
+        camera.distorsionCoefficients.length,
+        MatType(MatType.CV_32S),
+        camera.distorsionCoefficients,
+      ),
+    );
+    if (!rval) return;
 
     // # Reproject the corners to compute the reprojection error and filter out bad detections
     // reprojected_corners, _ = cv2.projectPoints(
@@ -243,33 +246,29 @@ class Charuco {
   ///
   /// Detect markers and ChArUco corners in the given image.
   ///
-  (List<List<Point2f>>, List<int>)? _detectMarkerCorners({
-    required Frame frame,
-  }) {
+  (VecPoint2f, VecI32)? _detectMarkerCorners({required Frame frame}) {
     final grayscaleFrame = frame.get(grayscale: true);
-    final (corners, ids) = _detectMarkers(frame: grayscaleFrame) ?? ([], []);
-    if (corners.isEmpty || ids.isEmpty) return null;
+    final (markerCorners, markerIds) =
+        _detectMarkers(frame: grayscaleFrame) ?? (null, null);
+    if (markerCorners == null || markerIds == null) return null;
 
-    // // Detect the charuco board
-    // final detectorParameters = CharucoDetectorParameters.empty();
-    // final detector = CharucoDetector.create(board.board, detectorParameters);
-    // final (cornersTp, idsTp, _, _) = detector.detectBoard(frame);
+    // Detect the charuco board
+    final detectorParameters = CharucoDetectorParameters.empty();
+    final detector = CharucoDetector.create(board, detectorParameters);
+    final (charucoCorners, charucoIds, _, _) = detector.detectBoard(
+      grayscaleFrame,
+      markerCorners: markerCorners,
+      markerIds: markerIds,
+    );
+    if (charucoCorners.isEmpty || charucoIds.isEmpty) return null;
 
-    // corner_counts, charuco_corners, charuco_ids = (
-    //     cv2.aruco.interpolateCornersCharuco(
-    //         corners, ids, grayscale_frame, charuco._board
-    //     )
-    // )
-    // if corner_counts == 0:
-    //     return None
-
-    return null; // TODO return the proper corners and ids
+    return (charucoCorners, charucoIds);
   }
 
   ///
   /// Detect ArUco markers in the given image, filtering to only include those belonging to the specified Charuco board.
   ///
-  (List<Point2f>, List<int>)? _detectMarkers({required InputArray frame}) {
+  (VecVecPoint2f, VecI32)? _detectMarkers({required InputArray frame}) {
     final detector = ArucoDetector.create(
       arucoDict,
       ArucoDetectorParameters.empty(),
@@ -293,11 +292,11 @@ class Charuco {
     // Step 1 - Find all the markers that belong to the current board. It may include
     // markers shared with other boards at that point.
     final ids = <int>[];
-    final corners = <Point2f>[];
+    final corners = <List<Point2f>>[];
     for (int i = 0; i < idsTp.length; i++) {
       if (markerIds.contains(idsTp[i])) {
         ids.add(idsTp[i]);
-        corners.addAll(cornersTp[i].toList());
+        corners.add(cornersTp[i].toList());
       }
     }
     if (ids.isEmpty) return null;
@@ -306,22 +305,29 @@ class Charuco {
     // to compute the mid point of the board.
     final uniqueIndices = ids.singleItemsIndices();
     final pointCount = uniqueIndices.length.toDouble();
-    final midPoint = uniqueIndices
-        .map((i) => corners[i])
-        .fold(
-          Point2f(0, 0),
-          (weightedSum, corner) => Point2f(
-            weightedSum.x + (corner.x / pointCount),
-            weightedSum.y + (corner.y / pointCount),
-          ),
-        );
+    final midPoint = uniqueIndices.map((i) => corners[i]).fold(Point2f(0, 0), (
+      weightedSum,
+      corner,
+    ) {
+      final midPointMarker = corner.fold(
+        Point2f(0, 0),
+        (sum, point) => Point2f(
+          sum.x + point.x / corner.length,
+          sum.y + point.y / corner.length,
+        ),
+      );
+      return Point2f(
+        weightedSum.x + (midPointMarker.x / pointCount),
+        weightedSum.y + (midPointMarker.y / pointCount),
+      );
+    });
 
     // Step 3 - Insert all the markers. For those which appears multiple times
     // (meaning, markers shared across multiple boards), we need to determine which
     // one belongs to the current board by keeping only the one with the nearest
     // distance to the mid-board position
     final idsOfCurrentBoard = <int>[];
-    final cornersOfCurrentBoard = <Point2f>[];
+    final cornersOfCurrentBoard = <List<Point2f>>[];
     for (int i = 0; i < ids.length; i++) {
       if (idsOfCurrentBoard.contains(ids[i])) {
         // This marker has already been processed, we skip it
@@ -345,8 +351,15 @@ class Charuco {
       var bestSoFar = -1;
       for (final index in allIndices) {
         final corner = corners[index];
-        final x = corner.x - midPoint.x;
-        final y = corner.y - midPoint.y;
+        final midMarker = corner.fold(
+          Point2f(0, 0),
+          (sum, point) => Point2f(
+            sum.x + point.x / corner.length,
+            sum.y + point.y / corner.length,
+          ),
+        );
+        final x = midMarker.x - midPoint.x;
+        final y = midMarker.y - midPoint.y;
         final distanceSquared = x * x + y * y;
         if (distanceSquared < minDistance) {
           minDistance = distanceSquared;
@@ -363,7 +376,10 @@ class Charuco {
       cornersOfCurrentBoard.add(corners[bestSoFar]);
     }
 
-    return (cornersOfCurrentBoard, idsOfCurrentBoard);
+    return (
+      VecVecPoint2f.fromList(cornersOfCurrentBoard),
+      VecI32.fromList(idsOfCurrentBoard),
+    );
   }
 }
 

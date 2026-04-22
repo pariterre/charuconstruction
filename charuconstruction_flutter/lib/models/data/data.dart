@@ -1,3 +1,10 @@
+//
+// This file defines the Data class, which is used to store and manipulate the data
+// It is an adaptation of the Data class developed for the Neurobiomech Software
+// which can be found (22nd of april, 2026) here:
+// https://github.com/LabNNL/neurobiomech_software/blob/main/frontend_fundamentals/lib/models/data.dart
+//
+
 import 'package:charuconstruction_flutter/models/data/time_series_data.dart';
 import 'package:charuconstruction_flutter/providers/devices_provider.dart';
 import 'package:collection/collection.dart';

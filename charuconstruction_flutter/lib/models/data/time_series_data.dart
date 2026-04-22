@@ -1,3 +1,10 @@
+//
+// This file defines the TimeSeriesData class, which is used to store and manipulate time series data
+// It is an adaptation of the TimeSeriesData class developed for the Neurobiomech Software
+// which can be found (22nd of april, 2026) here:
+// https://github.com/LabNNL/neurobiomech_software/blob/main/frontend_fundamentals/lib/models/time_series_data.dart
+//
+
 import 'dart:io';
 
 import 'package:charuconstruction_flutter/utils/generic_listener.dart';

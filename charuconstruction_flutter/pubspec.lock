@@ -92,11 +92,10 @@ packages:
   dartcv4:
     dependency: "direct main"
     description:
-      name: dartcv4
-      sha256: "5764d13550055da3bb35ca28e6866b837579dfb4b594582b7a7753785ca5dfef"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.2.1+4"
+      path: "../external/opencv_dart/packages/dartcv"
+      relative: true
+    source: path
+    version: "2.2.2"
   dbus:
     dependency: transitive
     description:
@@ -294,11 +293,10 @@ packages:
   opencv_dart:
     dependency: "direct main"
     description:
-      name: opencv_dart
-      sha256: b50ea4788e6d61df6369874e0244445d98ef9210dbb90b8d3c1df198b4ee2333
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.2.1+4"
+      path: "../external/opencv_dart/packages/opencv_dart"
+      relative: true
+    source: path
+    version: "2.2.2"
   package_config:
     dependency: transitive
     description:

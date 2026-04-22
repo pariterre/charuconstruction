@@ -1,0 +1,3 @@
+[submodule "external/opencv_dart"]
+	path = external/opencv_dart
+	url = https://github.com/s2mLab/opencv_dart.git

@@ -1,7 +1,15 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:charuconstruction_flutter/models/charucos/camera.dart';
+import 'package:charuconstruction_flutter/models/charucos/charuco.dart';
+import 'package:charuconstruction_flutter/models/charucos/frame_analyser.dart';
+import 'package:charuconstruction_flutter/models/charucos/media_reader.dart';
 import 'package:charuconstruction_flutter/models/devices/ble/manage_ble_device_page.dart';
 import 'package:charuconstruction_flutter/models/devices/device.dart';
 import 'package:charuconstruction_flutter/providers/devices_provider.dart';
 import 'package:charuconstruction_flutter/widgets/data_graph.dart';
+import 'package:charuconstruction_flutter/widgets/media_reader_container.dart';
 import 'package:flutter/material.dart';
 
 class MainPage extends StatefulWidget {
@@ -31,6 +39,18 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
+    // TODO Move these temporary stuff to accessors
+    final imagePath = '../run/charuco_4x6_24/tata.png';
+    final charucoFilePaths = [
+      '../run/charuco_4x6_24/board.json',
+      '../run/charuco_4x6_42/board.json',
+    ];
+    final charucoBoards = charucoFilePaths.map((path) {
+      final jsonString = File(path).readAsStringSync();
+      return Charuco.fromSerialized(jsonDecode(jsonString.toString()));
+    }).toList();
+    final camera = CameraModels.pixel2.toCamera();
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Charuconstruction'),
@@ -47,7 +67,14 @@ class _MainPageState extends State<MainPage> {
             ...DevicesProvider.instance.connectedDevices.map(
               (device) => Padding(
                 padding: const EdgeInsets.only(top: 20.0),
-                child: ShowCurrentValue(key: ValueKey(device), device: device),
+                child: _ShowCurrentValue(key: ValueKey(device), device: device),
+              ),
+            ),
+            MediaReaderContainer(
+              mediaReader: ImageReader(imagePath: imagePath),
+              analyser: CharucoFrameAnalyser(
+                charucoBoards: charucoBoards,
+                camera: camera,
               ),
             ),
           ],
@@ -76,16 +103,16 @@ class _MainPageState extends State<MainPage> {
   }
 }
 
-class ShowCurrentValue extends StatefulWidget {
-  const ShowCurrentValue({super.key, required this.device});
+class _ShowCurrentValue extends StatefulWidget {
+  const _ShowCurrentValue({super.key, required this.device});
 
   final Device device;
 
   @override
-  State<ShowCurrentValue> createState() => _ShowCurrentValueState();
+  State<_ShowCurrentValue> createState() => _ShowCurrentValueState();
 }
 
-class _ShowCurrentValueState extends State<ShowCurrentValue> {
+class _ShowCurrentValueState extends State<_ShowCurrentValue> {
   late final graphController = DataGraphController(data: widget.device.data);
 
   @override

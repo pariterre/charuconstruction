@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:charuconstruction_flutter/models/charucos/camera.dart';
 import 'package:charuconstruction_flutter/models/charucos/charuco_resolution.dart';
@@ -182,15 +183,15 @@ class Charuco {
   /// [camera] Camera parameters for pose estimation.
   /// [translationInitialGuess] Initial guess for translation vector.
   /// [rotationInitialGuess] Initial guess for rotation matrix.
-  void detect({
+  Future<(Mat, Mat)?> detect({
     required Frame frame,
     required Camera camera,
     // required TranslationVector? translationInitialGuess,
     // required RotationMatrix? rotationInitialGuess,
-  }) {
+  }) async {
     final (charucoCorners, charucoIds) =
-        _detectMarkerCorners(frame: frame) ?? (null, null);
-    if (charucoCorners == null || charucoIds == null) return;
+        (await _detectMarkerCorners(frame: frame)) ?? (null, null);
+    if (charucoCorners == null || charucoIds == null) return null;
 
     // TODO: Implement initial guesses
     // Initial guesses
@@ -205,48 +206,58 @@ class Charuco {
     //     else np.zeros((3, 1))
     // )
 
-    final (rval, rvec, tvec) = estimatePoseCharucoBoard(
+    final (isSuccess, rotation, translation) = estimatePoseCharucoBoard(
       charucoCorners,
       charucoIds,
       board,
-      Mat.from2DList(camera.matrix, MatType(MatType.CV_64F)),
-      Mat.fromList(
-        1,
-        camera.distorsionCoefficients.length,
-        MatType(MatType.CV_32S),
-        camera.distorsionCoefficients,
-      ),
+      camera.matrixAsMat,
+      camera.distorsionCoefficientsAsMat,
     );
-    if (!rval) return;
+    if (!isSuccess) return null;
 
-    // # Reproject the corners to compute the reprojection error and filter out bad detections
-    // reprojected_corners, _ = cv2.projectPoints(
-    //     self._board.getChessboardCorners()[charuco_ids.flatten()],
-    //     rvec=rotation,
-    //     tvec=translation,
-    //     cameraMatrix=camera.matrix,
-    //     distCoeffs=camera.distorsion_coefficients,
-    // )
-    // error = np.mean(
-    //     np.linalg.norm(reprojected_corners - charuco_corners, axis=2)
-    // )
-    // if error > 5.0:
-    //     return None, None
+    // Reproject the corners that are seen on the image to compute the reprojection error and filter out bad detections
+    final visibleCorners = board.chessboardCorners
+        .toList()
+        .asMap()
+        .entries
+        .where((e) => charucoIds.contains(e.key))
+        .map((e) => e.value)
+        .toList();
+    final (imagePoints, jacobian) = projectPoints(
+      Mat.fromVec(VecPoint3f.fromList(visibleCorners)),
+      rotation,
+      translation,
+      camera.matrixAsMat,
+      camera.distorsionCoefficientsAsMat,
+    );
 
-    // # If we get here, the charuco is properly recognized
-    // return (
-    //     TranslationVector.from_array(translation),
-    //     RotationMatrix(cv2.Rodrigues(rotation)[0]),
-    // )
+    // Compute the reprojection error in pixels
+    // TODO Use the builtin Mat.norm?
+    final error = VecPoint2f.fromMat(imagePoints).toList();
+    for (int i = 0; i < error.length; i++) {
+      error[i].x -= charucoCorners[i].x;
+      error[i].y -= charucoCorners[i].y;
+    }
+    final errorNorm = error.fold(
+      0.0,
+      (prev, e) => prev + math.sqrt(e.x * e.x + e.y * e.y),
+    );
+    if (errorNorm > 500) return null; // TODO Put back 5.0
+
+    // If we get here, the charuco is properly recognized
+    // TODO convert to inhouse Rotation and Translation types
+    return (translation, Rodrigues(rotation));
   }
 
   ///
   /// Detect markers and ChArUco corners in the given image.
   ///
-  (VecPoint2f, VecI32)? _detectMarkerCorners({required Frame frame}) {
+  Future<(VecPoint2f, VecI32)?> _detectMarkerCorners({
+    required Frame frame,
+  }) async {
     final grayscaleFrame = frame.get(grayscale: true);
     final (markerCorners, markerIds) =
-        _detectMarkers(frame: grayscaleFrame) ?? (null, null);
+        await _detectMarkers(frame: grayscaleFrame) ?? (null, null);
     if (markerCorners == null || markerIds == null) return null;
 
     // Detect the charuco board
@@ -265,12 +276,12 @@ class Charuco {
   ///
   /// Detect ArUco markers in the given image, filtering to only include those belonging to the specified Charuco board.
   ///
-  (VecVecPoint2f, VecI32)? _detectMarkers({required InputArray frame}) {
+  Future<(VecVecPoint2f, VecI32)?> _detectMarkers({required Mat frame}) async {
     final detector = ArucoDetector.create(
       arucoDict,
       ArucoDetectorParameters.empty(),
     );
-    final (cornersTp, idsTp, _) = detector.detectMarkers(frame);
+    final (cornersTp, idsTp, _) = await detector.detectMarkers(frame);
     if (cornersTp.isEmpty || idsTp.isEmpty) return null;
     if (cornersTp.length != idsTp.length) {
       throw StateError(

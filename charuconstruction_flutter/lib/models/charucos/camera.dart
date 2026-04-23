@@ -1,16 +1,18 @@
-enum CameraModel {
+import 'package:opencv_dart/opencv_dart.dart';
+
+enum CameraModels {
   pixel2;
 
   @override
   String toString() {
     return switch (this) {
-      CameraModel.pixel2 => 'pixel2',
+      CameraModels.pixel2 => 'pixel2',
     };
   }
 
   Camera toCamera({bool useVideoParameters = false, bool isVertical = false}) {
     return switch (this) {
-      CameraModel.pixel2 => Camera.fromPhone(
+      CameraModels.pixel2 => Camera.fromPhone(
         focalLength: 3.4,
         pixelSize: 0.0014,
         sensorWidth: 4032.0,
@@ -44,11 +46,18 @@ class Camera {
   /// Camera matrix (3x3).
   ///
   List<List<double>> matrix;
+  Mat get matrixAsMat => Mat.from2DList(matrix, MatType(MatType.CV_64F));
 
   ///
   /// Distortion coefficients (1x5).
   ///
   List<double> distorsionCoefficients;
+  Mat get distorsionCoefficientsAsMat => Mat.fromList(
+    1,
+    distorsionCoefficients.length,
+    MatType(MatType.CV_64F),
+    distorsionCoefficients,
+  );
 
   ///
   /// Constructor for a phone camera with default parameters.

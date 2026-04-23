@@ -6,9 +6,9 @@ enum CharucoResolution {
   @override
   String toString() {
     return switch (this) {
-      CharucoResolution.dpi100 => "dpi_100",
-      CharucoResolution.dpi200 => "dpi_200",
-      CharucoResolution.dpi300 => "dpi_300",
+      CharucoResolution.dpi100 => 'dpi_100',
+      CharucoResolution.dpi200 => 'dpi_200',
+      CharucoResolution.dpi300 => 'dpi_300',
     };
   }
 

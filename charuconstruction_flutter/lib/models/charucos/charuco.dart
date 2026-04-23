@@ -92,7 +92,7 @@ class Charuco {
     // Sanity checks
     if (markerLen > squareLen) {
       throw ArgumentError(
-        "The marker length cannot be greater than the square length.",
+        'The marker length cannot be greater than the square length.',
       );
     }
 
@@ -125,13 +125,13 @@ class Charuco {
 
   Map<String, dynamic> serialize() {
     return {
-      "vertical_squares_count": verticalSquaresCount,
-      "horizontal_squares_count": horizontalSquaresCount,
-      "square_len": squareLen,
-      "marker_len": markerLen,
-      "resolution": resolution.name,
-      "aruco_dict": arucoDictId,
-      "seed": seed,
+      'vertical_squares_count': verticalSquaresCount,
+      'horizontal_squares_count': horizontalSquaresCount,
+      'square_len': squareLen,
+      'marker_len': markerLen,
+      'resolution': resolution.name,
+      'aruco_dict': arucoDictId,
+      'seed': seed,
     };
   }
 
@@ -150,10 +150,7 @@ class Charuco {
   ///
   /// Show the generated Charuco board image in a window.
   ///
-  void show() {
-    imshow("img", boardImage);
-    waitKey(0);
-  }
+  Frame toFrame() => Frame(boardImage);
 
   ///
   /// Save the Charuco board parameters and image to a folder.
@@ -166,7 +163,7 @@ class Charuco {
     final saveDir = Directory('${baseDir.path}/$saveFolder');
     if (!override && saveDir.existsSync()) {
       throw FileSystemException(
-        "The folder $saveFolder already exists. Use override=true to overwrite.",
+        'The folder $saveFolder already exists. Use override=true to overwrite.',
       );
     }
     saveDir.createSync(recursive: true);
@@ -277,7 +274,7 @@ class Charuco {
     if (cornersTp.isEmpty || idsTp.isEmpty) return null;
     if (cornersTp.length != idsTp.length) {
       throw StateError(
-        "The number of detected corners and IDs should be the same.",
+        'The number of detected corners and IDs should be the same.',
       );
     }
 
@@ -367,7 +364,7 @@ class Charuco {
         }
       }
       if (i != bestSoFar) {
-        // This marker appears multiple times, but the one at index "i" is not the
+        // This marker appears multiple times, but the one at index 'i' is not the
         // closest to the mid-board position, so we skip it. This is important
         // to preserve the order of the markers
         continue;

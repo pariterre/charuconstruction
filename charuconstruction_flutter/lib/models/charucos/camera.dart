@@ -4,7 +4,7 @@ enum CameraModel {
   @override
   String toString() {
     return switch (this) {
-      CameraModel.pixel2 => "pixel2",
+      CameraModel.pixel2 => 'pixel2',
     };
   }
 

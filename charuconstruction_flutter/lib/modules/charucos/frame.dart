@@ -121,7 +121,6 @@ class Frame {
 /// Ensure the frame is in grayscale format.
 ///
 Mat _convertToGrayscale(Mat image) {
-  // TODO Check how to test for the number of channels in the image
   if (image.channels == 1) {
     return image;
   } else if (image.channels == 3) {

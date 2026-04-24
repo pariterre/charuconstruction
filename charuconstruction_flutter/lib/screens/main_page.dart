@@ -33,7 +33,9 @@ class _MainPageState extends State<MainPage> {
   @override
   Widget build(BuildContext context) {
     // TODO Move these temporary stuff to accessors
-    final imagePath = '../run/charuco_4x6_24/tata.png';
+    final mediaReader = ImageReader(
+      imagePath: '../run/charuco_4x6_24/tata.png',
+    );
     final charucoFilePaths = [
       '../run/charuco_4x6_24/board.json',
       '../run/charuco_4x6_42/board.json',
@@ -43,6 +45,15 @@ class _MainPageState extends State<MainPage> {
       return Charuco.fromSerialized(jsonDecode(jsonString.toString()));
     }).toList();
     final camera = CameraModels.pixel2.toCamera();
+    final analyser = FrameAnalyserPipeline(
+      analysers: [
+        CharucoFrameAnalyser(
+          charucoBoards: charucoBoards,
+          camera: camera,
+          ignoreReconstructionError: true,
+        ),
+      ],
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -66,13 +77,7 @@ class _MainPageState extends State<MainPage> {
                 ),
               ),
             ),
-            MediaReaderContainer(
-              mediaReader: ImageReader(imagePath: imagePath),
-              analyser: CharucoFrameAnalyser(
-                charucoBoards: charucoBoards,
-                camera: camera,
-              ),
-            ),
+            MediaReaderContainer(mediaReader: mediaReader, analyser: analyser),
           ],
         ),
       ),

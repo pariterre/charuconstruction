@@ -1,3 +1,5 @@
+import 'package:charuconstruction_flutter/modules/charucos/extensions.dart';
+import 'package:ml_linalg/linalg.dart';
 import 'package:opencv_dart/opencv.dart';
 
 import 'camera.dart';
@@ -8,21 +10,31 @@ abstract class FrameAnalyser {
   ///
   /// Analyse the frames from the media reader.
   ///
-  Future<Frame> analyse(Frame frame);
+  Future<Frame> perform(Frame frame);
 }
 
 class CharucoFrameAnalyser extends FrameAnalyser {
   final List<Charuco> charucoBoards;
   final Camera camera;
+  final bool ignoreReconstructionError;
 
-  CharucoFrameAnalyser({required this.charucoBoards, required this.camera});
+  CharucoFrameAnalyser({
+    required this.charucoBoards,
+    required this.camera,
+    this.ignoreReconstructionError = false,
+  });
 
   @override
-  Future<Frame> analyse(Frame frame) async {
-    final results = <Charuco, (Mat?, Mat?)?>{};
+  Future<Frame> perform(Frame frame) async {
+    final results = <Charuco, (Vector?, Matrix?)?>{};
     for (var charuco in charucoBoards) {
       results[charuco] =
-          (await charuco.detect(frame: frame, camera: camera)) ?? (null, null);
+          (await charuco.detect(
+            frame: frame,
+            camera: camera,
+            ignoreReconstructionError: ignoreReconstructionError,
+          )) ??
+          (null, null);
     }
 
     //   # Compute the reconstruction error in degrees
@@ -58,8 +70,8 @@ class CharucoFrameAnalyser extends FrameAnalyser {
         frame.get(),
         camera.matrixAsMat,
         camera.distorsionCoefficientsAsMat,
-        rotation,
-        translation,
+        rotation.toMat(),
+        translation.toMat(),
         0.1,
       );
     }
@@ -75,6 +87,22 @@ class CharucoFrameAnalyser extends FrameAnalyser {
     return frame;
   }
 }
+
+class FrameAnalyserPipeline extends FrameAnalyser {
+  final List<FrameAnalyser> _analysers;
+
+  FrameAnalyserPipeline({required List<FrameAnalyser> analysers})
+    : _analysers = analysers;
+
+  @override
+  Future<Frame> perform(Frame frame) async {
+    for (final analyser in _analysers) {
+      frame = await analyser.perform(frame);
+    }
+    return frame;
+  }
+}
+
 
 // TODO Implement the flow for saving the video
 // class VideoSaverAnalyser extends FrameAnalyser {

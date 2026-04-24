@@ -11,8 +11,7 @@ class MediaReaderContainer extends StatelessWidget {
   });
 
   final MediaReader mediaReader;
-  final FrameAnalyser
-  analyser; // TODO FrameAnalysers that produce a stream of analyses
+  final FrameAnalyser analyser;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +23,7 @@ class MediaReaderContainer extends StatelessWidget {
           final frame = snapshot.data!;
 
           return FutureBuilder(
-            future: analyser.analyse(frame),
+            future: analyser.perform(frame),
             builder: (context, snapshot) {
               if (snapshot.hasData) {
                 // The analysis of the frame is complete, we can now display it

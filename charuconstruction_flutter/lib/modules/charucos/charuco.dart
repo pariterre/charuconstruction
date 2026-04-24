@@ -1,9 +1,10 @@
 import 'dart:io';
-import 'dart:math' as math;
 
+import 'package:charuconstruction_flutter/modules/charucos/extensions.dart';
 import 'package:charuconstruction_flutter/utils/math.dart';
 import 'package:charuconstruction_flutter/utils/misc.dart';
 import 'package:dartcv4/dartcv.dart';
+import 'package:ml_linalg/linalg.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'camera.dart';
@@ -182,30 +183,25 @@ class Charuco {
   /// Detect markers and ChArUco corners in the given image.
   /// [frame] OpenCV frame to detect markers and corners from.
   /// [camera] Camera parameters for pose estimation.
-  /// [translationInitialGuess] Initial guess for translation vector.
-  /// [rotationInitialGuess] Initial guess for rotation matrix.
-  Future<(Mat, Mat)?> detect({
+  /// [initialGuess] Initial guess for translation and rotation. The values
+  /// can (should) be the output of a previous detection, which can help to improve the pose estimation
+  /// [ignoreReconstructionError] Whether to ignore reconstruction errors during detection.
+  ///
+  /// Returns the translation and rotation (rodriguez representation) vectors of the
+  /// charuco board in the camera frame, or null if the detection fails.
+  Future<(Vector, Matrix)?> detect({
     required Frame frame,
     required Camera camera,
-    // required TranslationVector? translationInitialGuess,
-    // required RotationMatrix? rotationInitialGuess,
+    (Vector translation, Matrix rotation)? initialGuess,
+    bool ignoreReconstructionError = false,
   }) async {
     final (charucoCorners, charucoIds) =
         (await _detectMarkerCorners(frame: frame)) ?? (null, null);
     if (charucoCorners == null || charucoIds == null) return null;
 
-    // TODO: Implement initial guesses
     // Initial guesses
-    // translation_initial_guess = (
-    //     translation_initial_guess.as_array()
-    //     if translation_initial_guess is not None
-    //     else np.zeros((3, 1))
-    // )
-    // rotation_initial_guess = (
-    //     rotation_initial_guess.to_rodrigues()
-    //     if rotation_initial_guess is not None
-    //     else np.zeros((3, 1))
-    // )
+    final translationInitialGuess = initialGuess?.$1.toMat();
+    final rotationInitialGuess = initialGuess?.$2.toMat();
 
     final (isSuccess, rotation, translation) = estimatePoseCharucoBoard(
       charucoCorners,
@@ -213,41 +209,47 @@ class Charuco {
       board,
       camera.matrixAsMat,
       camera.distorsionCoefficientsAsMat,
+      tvec: translationInitialGuess,
+      rvec: rotationInitialGuess,
     );
     if (!isSuccess) return null;
 
     // Reproject the corners that are seen on the image to compute the reprojection error and filter out bad detections
-    final visibleCorners = board.chessboardCorners
-        .toList()
-        .asMap()
-        .entries
-        .where((e) => charucoIds.contains(e.key))
-        .map((e) => e.value)
-        .toList();
-    final (imagePoints, jacobian) = projectPoints(
-      Mat.fromVec(VecPoint3f.fromList(visibleCorners)),
-      rotation,
-      translation,
-      camera.matrixAsMat,
-      camera.distorsionCoefficientsAsMat,
-    );
 
     // Compute the reprojection error in pixels
-    // TODO Use the builtin Mat.norm?
-    final error = VecPoint2f.fromMat(imagePoints).toList();
-    for (int i = 0; i < error.length; i++) {
-      error[i].x -= charucoCorners[i].x;
-      error[i].y -= charucoCorners[i].y;
+    if (!ignoreReconstructionError) {
+      final visibleCorners = board.chessboardCorners
+          .toList()
+          .asMap()
+          .entries
+          .where((e) => charucoIds.contains(e.key))
+          .map((e) => e.value)
+          .toList();
+      final (imagePoints, jacobian) = projectPoints(
+        Mat.fromVec(VecPoint3f.fromList(visibleCorners)),
+        rotation,
+        translation,
+        camera.matrixAsMat,
+        camera.distorsionCoefficientsAsMat,
+      );
+
+      final error = VecPoint2f.fromMat(imagePoints).toList();
+      for (int i = 0; i < error.length; i++) {
+        error[i].x -= charucoCorners[i].x;
+        error[i].y -= charucoCorners[i].y;
+      }
+      final errorNormSquared = error.fold(
+        0.0,
+        (prev, e) => prev + e.x * e.x + e.y * e.y,
+      );
+      if (errorNormSquared > 5 * 5) return null;
     }
-    final errorNorm = error.fold(
-      0.0,
-      (prev, e) => prev + math.sqrt(e.x * e.x + e.y * e.y),
-    );
-    if (errorNorm > 500) return null; // TODO Put back 5.0
 
     // If we get here, the charuco is properly recognized
-    // TODO convert to inhouse Rotation and Translation types
-    return (translation, Rodrigues(rotation));
+    final Vector translationVector = translation.toVector();
+    final rodrigues = Rodrigues(rotation);
+    final Matrix rotationVector = rodrigues.toMatrix();
+    return (translationVector, rotationVector);
   }
 
   ///

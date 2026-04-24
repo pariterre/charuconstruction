@@ -25,10 +25,6 @@ class _MediaReaderContainerState extends State<MediaReaderContainer> {
     return StreamBuilder(
       stream: widget.mediaReader.readFrames(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
         return FittedBox(
           fit: BoxFit.contain,
           child: SizedBox(
@@ -36,7 +32,7 @@ class _MediaReaderContainerState extends State<MediaReaderContainer> {
             height: 1080,
             child: _MediaReaderStream(
               analyser: widget.analyser,
-              frame: snapshot.data!,
+              frame: snapshot.data,
             ),
           ),
         );
@@ -49,7 +45,7 @@ class _MediaReaderStream extends StatefulWidget {
   const _MediaReaderStream({required this.analyser, required this.frame});
 
   final FrameAnalyser analyser;
-  final Frame frame;
+  final Frame? frame;
 
   @override
   State<_MediaReaderStream> createState() => _MediaReaderStreamState();
@@ -58,10 +54,10 @@ class _MediaReaderStream extends StatefulWidget {
 class _MediaReaderStreamState extends State<_MediaReaderStream> {
   Uint8List? _lastFrameBytes;
 
-  Future<void> _processFrame(Frame frame) async {
+  Future<void> _processFrame(Frame? frame) async {
     final processedFrame = await widget.analyser.perform(frame);
 
-    final bytes = processedFrame.toBytes();
+    final bytes = processedFrame?.toBytes();
     if (bytes != null) {
       setState(() {
         _lastFrameBytes = bytes;

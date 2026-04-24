@@ -11,7 +11,7 @@ abstract class MediaReader {
   /// Read frames from the media source. This method returns a stream of frames t
   /// hat can be listened to for real-time processing.
   ///
-  Stream<Frame> readFrames();
+  Stream<Frame?> readFrames();
 
   ///
   /// Dispose of any resources used by the media reader. This should be called
@@ -26,7 +26,7 @@ class ImageReader implements MediaReader {
   ImageReader({required String imagePath}) : frame = Frame(imread(imagePath));
 
   @override
-  Stream<Frame> readFrames() async* {
+  Stream<Frame?> readFrames() async* {
     yield frame;
     // Terminate the stream after yielding that single frame
   }
@@ -45,7 +45,7 @@ class VideoReader implements MediaReader {
     : _capture = VideoCapture.fromFile(videoPath);
 
   @override
-  Stream<Frame> readFrames() async* {
+  Stream<Frame?> readFrames() async* {
     if (!_capture.isOpened) throw Exception('Failed to open video: $videoPath');
 
     while (true) {
@@ -103,7 +103,7 @@ class CharucoMockReader implements MediaReader {
   }
 
   @override
-  Stream<Frame> readFrames() async* {
+  Stream<Frame?> readFrames() async* {
     // Move the board further away and rotate the boards and get their images
     for (final frameTransformations in transformations) {
       // First create a white background which corresponds to a distant wall
@@ -138,6 +138,8 @@ class CharucoMockReader implements MediaReader {
       yield Frame(imdecode(buf, IMREAD_COLOR));
       await Future.delayed(const Duration(milliseconds: 100)); // Simulate delay
     }
+
+    yield null;
   }
 
   ///

@@ -50,13 +50,13 @@ class _MainPageState extends State<MainPage> {
       camera: camera,
       charucos: charucoBoards,
       transformations: List.generate(
-        10,
+        100,
         (value) => [
           (Vector.zero(3), Matrix.identity(3)),
           (
             Vector.fromList([0, 0, 4.5]),
             charucos.MatrixExtensions.fromEuler([
-              (value * 2.0, charucos.Axis.x),
+              (value * 0.5, charucos.Axis.x),
               (-20.0, charucos.Axis.y),
               (-30.0, charucos.Axis.z),
             ]),
@@ -71,6 +71,7 @@ class _MainPageState extends State<MainPage> {
           camera: camera,
           ignoreReconstructionError: true,
         ),
+        charucos.VideoSaverAnalyser(outputPath: 'output.mp4'),
       ],
     );
 

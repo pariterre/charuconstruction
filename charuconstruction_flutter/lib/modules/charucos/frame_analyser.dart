@@ -10,7 +10,12 @@ abstract class FrameAnalyser {
   ///
   /// Analyse the frames from the media reader.
   ///
-  Future<Frame> perform(Frame frame);
+  Future<Frame?> perform(Frame? frame);
+
+  ///
+  /// Dispose any resources used by the analyser.
+  ///
+  void dispose();
 }
 
 class CharucoFrameAnalyser extends FrameAnalyser {
@@ -25,7 +30,12 @@ class CharucoFrameAnalyser extends FrameAnalyser {
   });
 
   @override
-  Future<Frame> perform(Frame frame) async {
+  Future<Frame?> perform(Frame? frame) async {
+    if (frame == null) {
+      dispose();
+      return null;
+    }
+
     final results = <Charuco, (Vector?, Matrix?)?>{};
     for (var charuco in charucoBoards) {
       results[charuco] =
@@ -75,16 +85,13 @@ class CharucoFrameAnalyser extends FrameAnalyser {
         0.1,
       );
     }
-    // # charuco.draw_aruco_markers(frame_to_draw)
-    // charuco.draw_estimated_pose_axes(
-    //     frame=frame_to_draw,
-    //     camera=camera,
-    //     translation=translation,
-    //     rotation=rotation,
-    //     axes_length=0.1,
-    // )
 
     return frame;
+  }
+
+  @override
+  void dispose() {
+    // No resources to dispose in this analyser
   }
 }
 
@@ -95,23 +102,49 @@ class FrameAnalyserPipeline extends FrameAnalyser {
     : _analysers = analysers;
 
   @override
-  Future<Frame> perform(Frame frame) async {
+  Future<Frame?> perform(Frame? frame) async {
+    if (frame == null) {
+      dispose();
+      return null;
+    }
+
     for (final analyser in _analysers) {
       frame = await analyser.perform(frame);
     }
     return frame;
   }
+
+  @override
+  void dispose() {
+    for (final analyser in _analysers) {
+      analyser.dispose();
+    }
+  }
 }
 
+class VideoSaverAnalyser implements FrameAnalyser {
+  final String outputPath;
+  late final VideoWriter _writer;
 
-// TODO Implement the flow for saving the video
-// class VideoSaverAnalyser extends FrameAnalyser {
-//   @override
-//   Future<Frame> analyse(Frame frame) async {
-//     //   if should_record_video:
-//     //       video_frame.frame_from(frame_to_draw)
-//     //       video_frame.add_frame_to_recording()
-    
-//     return frame;
-//   }
-// }
+  VideoSaverAnalyser({
+    required this.outputPath,
+    double fps = 30.0,
+    (int, int) frameSize = (1920, 1080),
+  }) : _writer = VideoWriter.fromFile(outputPath, 'mp4v', fps, frameSize);
+
+  @override
+  Future<Frame?> perform(Frame? frame) async {
+    if (frame == null) {
+      dispose();
+      return null;
+    }
+
+    _writer.write(frame.get());
+    return frame;
+  }
+
+  @override
+  void dispose() {
+    _writer.release();
+  }
+}

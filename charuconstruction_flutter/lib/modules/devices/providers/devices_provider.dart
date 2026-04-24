@@ -1,7 +1,8 @@
-import 'package:charuconstruction_flutter/models/data/data.dart';
-import 'package:charuconstruction_flutter/models/devices/b24_force_sensor.dart';
-import 'package:charuconstruction_flutter/models/devices/device.dart';
+import 'package:charuconstruction_flutter/modules/data/data.dart';
 import 'package:charuconstruction_flutter/utils/generic_listener.dart';
+
+import '../ble/b24_force_sensor.dart';
+import '../device.dart';
 
 enum AvailableDevices {
   b24;
@@ -51,7 +52,7 @@ class DevicesProvider {
       _devices[device] = newDevice;
 
       // Add a reference to the device data in the data pool
-      _data.add(device, newDevice.data);
+      _data.add(device.name, newDevice.data);
       // Reset the initial time for all the devices
       _data.clear(initialTime: DateTime.now());
     }

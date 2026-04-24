@@ -1,8 +1,6 @@
 import 'dart:ui';
 
-import 'package:charuconstruction_flutter/models/devices/b24_force_sensor.dart';
-import 'package:charuconstruction_flutter/models/devices/ble/universalr_ble_interface.dart';
-import 'package:charuconstruction_flutter/providers/devices_provider.dart';
+import 'package:charuconstruction_flutter/modules/devices/devices.dart';
 import 'package:charuconstruction_flutter/screens/main_page.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';

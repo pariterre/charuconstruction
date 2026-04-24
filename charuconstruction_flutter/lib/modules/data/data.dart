@@ -5,17 +5,19 @@
 // https://github.com/LabNNL/neurobiomech_software/blob/main/frontend_fundamentals/lib/models/data.dart
 //
 
-import 'package:charuconstruction_flutter/models/data/time_series_data.dart';
-import 'package:charuconstruction_flutter/providers/devices_provider.dart';
 import 'package:collection/collection.dart';
 import 'package:path_provider/path_provider.dart';
+
+import 'time_series_data.dart';
+
+export 'time_series_data.dart';
+export 'widgets/data_graph.dart';
 
 class Data {
   DateTime _initialTime;
   DateTime get initialTime => _initialTime;
-  final Map<AvailableDevices, TimeSeriesData> _devices;
-  Map<AvailableDevices, TimeSeriesData> get devices =>
-      Map.unmodifiable(_devices);
+  final Map<String, TimeSeriesData> _devices;
+  Map<String, TimeSeriesData> get devices => Map.unmodifiable(_devices);
 
   ///
   /// Constructor
@@ -36,7 +38,7 @@ class Data {
   /// [devices] is the list of devices to copy
   Data._fromCopy({
     required DateTime initialTime,
-    required Map<AvailableDevices, TimeSeriesData> devices,
+    required Map<String, TimeSeriesData> devices,
   }) : _initialTime = initialTime,
        _devices = devices;
 
@@ -47,9 +49,9 @@ class Data {
   ///
   /// Add a device to the data pool
   ///
-  void add(AvailableDevices device, TimeSeriesData data) {
+  void add(String device, TimeSeriesData data) {
     if (_devices.containsKey(device)) {
-      throw Exception('Device with name ${device.name} already exists.');
+      throw Exception('Device with name $device already exists.');
     }
     _devices[device] = data;
   }
@@ -89,7 +91,9 @@ class Data {
   /// the channel values should be in the same order as the channels of the device
   void appendFromJson(Map<String, dynamic> json) {
     for (final data in json.values) {
-      final key = _devices.keys.firstWhereOrNull((d) => d.name == data['name']);
+      final key = _devices.keys.firstWhereOrNull(
+        (device) => device == data['name'],
+      );
       if (key == null) {
         throw Exception(
           'Device with name ${data['name']} not found in devices list.',
@@ -143,7 +147,7 @@ class Data {
 
     await Future.wait([
       for (final key in _devices.keys)
-        _devices[key]!.toFile('$folderPath/${key.name}.csv'),
+        _devices[key]!.toFile('$folderPath/$key.csv'),
     ]);
   }
 

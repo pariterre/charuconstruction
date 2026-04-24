@@ -1,5 +1,6 @@
-import 'package:charuconstruction_flutter/models/charucos/frame.dart';
 import 'package:opencv_dart/opencv.dart';
+
+import 'frame.dart';
 
 abstract class MediaReader {
   ///

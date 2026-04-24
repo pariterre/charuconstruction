@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:charuconstruction_flutter/models/data/time_series_data.dart';
+import 'package:charuconstruction_flutter/modules/data/time_series_data.dart';
 import 'package:charuconstruction_flutter/utils/generic_listener.dart';
 
 abstract class Device {

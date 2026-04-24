@@ -1,6 +1,7 @@
-import 'package:charuconstruction_flutter/models/charucos/frame_analyser.dart';
-import 'package:charuconstruction_flutter/models/charucos/media_reader.dart';
 import 'package:flutter/material.dart';
+
+import '../frame_analyser.dart';
+import '../media_reader.dart';
 
 class MediaReaderContainer extends StatelessWidget {
   const MediaReaderContainer({

@@ -1,60 +1,18 @@
-import 'package:charuconstruction_flutter/models/devices/b24_force_sensor.dart';
-import 'package:charuconstruction_flutter/models/devices/ble/ble_exceptions.dart';
-import 'package:charuconstruction_flutter/providers/devices_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-class BleDeviceManagerPage extends StatefulWidget {
-  const BleDeviceManagerPage({super.key});
+import '../ble/b24_force_sensor.dart';
+import '../ble/ble_exceptions.dart';
+import '../providers/devices_provider.dart';
+
+class B24ManagementContainer extends StatefulWidget {
+  const B24ManagementContainer({super.key});
 
   @override
-  State<BleDeviceManagerPage> createState() => _BleDeviceManagerPageState();
+  State<B24ManagementContainer> createState() => _B24ManagementContainerState();
 }
 
-class _BleDeviceManagerPageState extends State<BleDeviceManagerPage> {
-  AvailableDevices _selectedDevice = AvailableDevices.values.first;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          DropdownButton<AvailableDevices>(
-            hint: Text('Select a device to manage'),
-            items: AvailableDevices.values.map((device) {
-              return DropdownMenuItem(
-                value: device,
-                child: Text(device.toString().split('.').last),
-              );
-            }).toList(),
-            value: _selectedDevice,
-            onChanged: _selectDevice,
-          ),
-          switch (_selectedDevice) {
-            AvailableDevices.b24 => const _B24ManagementScreen(),
-          },
-        ],
-      ),
-    );
-  }
-
-  void _selectDevice(AvailableDevices? device) {
-    if (device == null) return;
-    setState(() {
-      _selectedDevice = device;
-    });
-  }
-}
-
-class _B24ManagementScreen extends StatefulWidget {
-  const _B24ManagementScreen();
-
-  @override
-  State<_B24ManagementScreen> createState() => _B24ManagementScreenState();
-}
-
-class _B24ManagementScreenState extends State<_B24ManagementScreen> {
+class _B24ManagementContainerState extends State<B24ManagementContainer> {
   bool _isBusy = false;
 
   String? _statusMessage;

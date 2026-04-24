@@ -1,8 +1,9 @@
 import 'dart:math';
 
-import 'package:charuconstruction_flutter/models/data/time_series_data.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+
+import '../time_series_data.dart';
 
 class DataGraphController {
   final TimeSeriesData _data;

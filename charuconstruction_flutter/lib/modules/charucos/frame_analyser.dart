@@ -1,7 +1,8 @@
-import 'package:charuconstruction_flutter/models/charucos/camera.dart';
-import 'package:charuconstruction_flutter/models/charucos/charuco.dart';
-import 'package:charuconstruction_flutter/models/charucos/frame.dart';
 import 'package:opencv_dart/opencv.dart';
+
+import 'camera.dart';
+import 'charuco.dart';
+import 'frame.dart';
 
 abstract class FrameAnalyser {
   ///

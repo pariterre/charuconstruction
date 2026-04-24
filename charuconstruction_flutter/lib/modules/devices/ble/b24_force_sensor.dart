@@ -2,9 +2,10 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:charuconstruction_flutter/models/devices/ble/ble_device.dart';
 import 'package:logging/logging.dart';
-import 'package:charuconstruction_flutter/models/devices/ble/universalr_ble_interface.dart';
+
+import 'ble_device.dart';
+import 'universal_ble_interface.dart';
 
 final _logger = Logger('B24ForceSensor');
 

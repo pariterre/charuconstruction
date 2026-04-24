@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:charuconstruction_flutter/modules/charucos/charucos.dart';
+import 'package:charuconstruction_flutter/modules/charucos/charucos.dart'
+    as charucos;
 import 'package:charuconstruction_flutter/modules/devices/devices.dart';
 import 'package:flutter/material.dart';
+import 'package:ml_linalg/linalg.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -33,21 +35,38 @@ class _MainPageState extends State<MainPage> {
   @override
   Widget build(BuildContext context) {
     // TODO Move these temporary stuff to accessors
-    final mediaReader = VideoReader(
-      videoPath: 'assets/rotating_charuco_board.mp4',
-    );
     final charucoFilePaths = [
       '../run/charuco_4x6_24/board.json',
       '../run/charuco_4x6_42/board.json',
     ];
     final charucoBoards = charucoFilePaths.map((path) {
       final jsonString = File(path).readAsStringSync();
-      return Charuco.fromSerialized(jsonDecode(jsonString.toString()));
+      return charucos.Charuco.fromSerialized(jsonDecode(jsonString.toString()));
     }).toList();
-    final camera = CameraModels.pixel2.toCamera();
-    final analyser = FrameAnalyserPipeline(
+    final camera = charucos.CameraModels.pixel2.toCamera(
+      useVideoParameters: true,
+    );
+    final mediaReader = charucos.CharucoMockReader(
+      camera: camera,
+      charucos: charucoBoards,
+      transformations: List.generate(
+        10,
+        (value) => [
+          (Vector.zero(3), Matrix.identity(3)),
+          (
+            Vector.fromList([0, 0, 4.5]),
+            charucos.MatrixExtensions.fromEuler([
+              (value * 2.0, charucos.Axis.x),
+              (-20.0, charucos.Axis.y),
+              (-30.0, charucos.Axis.z),
+            ]),
+          ),
+        ],
+      ),
+    );
+    final analyser = charucos.FrameAnalyserPipeline(
       analysers: [
-        CharucoFrameAnalyser(
+        charucos.CharucoFrameAnalyser(
           charucoBoards: charucoBoards,
           camera: camera,
           ignoreReconstructionError: true,
@@ -60,25 +79,30 @@ class _MainPageState extends State<MainPage> {
         title: Text('Charuconstruction'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ElevatedButton(
-              onPressed: _manageDevices,
-              child: Text('Manage sensor devices'),
-            ),
-            ...DevicesProvider.instance.connectedDevices.map(
-              (device) => Padding(
-                padding: const EdgeInsets.only(top: 20.0),
-                child: DeviceDataContainer(
-                  key: ValueKey(device),
-                  device: device,
+      body: SingleChildScrollView(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ElevatedButton(
+                onPressed: _manageDevices,
+                child: Text('Manage sensor devices'),
+              ),
+              ...DevicesProvider.instance.connectedDevices.map(
+                (device) => Padding(
+                  padding: const EdgeInsets.only(top: 20.0),
+                  child: DeviceDataContainer(
+                    key: ValueKey(device),
+                    device: device,
+                  ),
                 ),
               ),
-            ),
-            MediaReaderContainer(mediaReader: mediaReader, analyser: analyser),
-          ],
+              charucos.MediaReaderContainer(
+                mediaReader: mediaReader,
+                analyser: analyser,
+              ),
+            ],
+          ),
         ),
       ),
     );

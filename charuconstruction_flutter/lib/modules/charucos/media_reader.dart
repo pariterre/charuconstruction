@@ -1,7 +1,9 @@
-import 'dart:io';
-
+import 'package:charuconstruction_flutter/modules/charucos/extensions.dart';
+import 'package:ml_linalg/linalg.dart';
 import 'package:opencv_dart/opencv.dart';
 
+import 'camera.dart';
+import 'charuco.dart';
 import 'frame.dart';
 
 abstract class MediaReader {
@@ -61,99 +63,136 @@ class VideoReader implements MediaReader {
 }
 
 class CharucoMockReader implements MediaReader {
+  ///
+  /// The number of frames in the mock reader is determined by the length of the transformations list.
+  ///
+  final int frameCount;
+
+  ///
+  /// The list of Charuco boards to simulate. Each board will be transformed according to the provided transformations.
+  ///
+  final List<Charuco> charucos;
+
+  ///
+  /// A list of transformations for each Charuco board across all frames.
+  /// The outer list corresponds to frames, and the inner list corresponds to the
+  /// transformations (translation, rotation) for each board in that frame.
+  /// Therefore each inner list should have the same length as the number of Charuco boards.
+  ///
+  final List<List<(Vector, Matrix)>> transformations;
+
+  ///
+  /// The camera parameters to use for projecting the Charuco boards in the mock frames.
+  /// This includes intrinsic parameters like focal length and sensor size.
+  ///
+  final Camera camera;
+
+  CharucoMockReader({
+    required this.charucos,
+    required this.transformations,
+    required this.camera,
+  }) : frameCount = transformations.isNotEmpty ? transformations.length : 0 {
+    // Sanity checks for angles
+    for (var frame in transformations) {
+      if (frame.length != charucos.length) {
+        throw Exception(
+          "Number of transformations must match number of boards in all frames.",
+        );
+      }
+    }
+  }
+
   @override
-  Stream<Frame> readFrames() {
-    // TODO: implement readFrames
-    throw UnimplementedError();
+  Stream<Frame> readFrames() async* {
+    // Move the board further away and rotate the boards and get their images
+    for (final frameTransformations in transformations) {
+      // First create a white background which corresponds to a distant wall
+      Mat frame = Mat.fromScalar(
+        camera.sensorHeight.toInt(),
+        camera.sensorWidth.toInt(),
+        MatType.CV_16UC(3),
+        Scalar(0xFFFF, 0xFFFF, 0xFFFF),
+      );
+
+      for (final charucoTransformation in frameTransformations) {
+        final board =
+            charucos[frameTransformations.indexOf(charucoTransformation)];
+        final projectedBoard = _projectBoard(
+          charuco: board,
+          camera: camera,
+          translation: charucoTransformation.$1,
+          rotation: charucoTransformation.$2,
+        );
+
+        final (_, mask) = threshold(
+          projectedBoard,
+          0xFFFF - 1,
+          0xFFFF,
+          THRESH_BINARY_INV,
+        );
+        projectedBoard.copyTo(frame, mask: mask);
+      }
+      // Encode and decode to get a proper Frame object
+      final (isSuccess, buf) = imencode(".png", frame);
+      if (!isSuccess) break;
+      yield Frame(imdecode(buf, IMREAD_COLOR));
+      await Future.delayed(const Duration(milliseconds: 100)); // Simulate delay
+    }
+  }
+
+  ///
+  /// Project the Charuco board image with a given rotation and translation.
+  /// [charuco] The Charuco board to project on the image
+  /// [camera] The camera parameters to use for projection.
+  /// [frame] The Charuco board image to project.
+  /// [transformation] The homogenous transformation (4x4 matrix, consisting of
+  /// the 3x3 rotation, 3x1 translation, and 1x1 scale) containing translation
+  /// and rotation to apply to the board.
+  ///
+  Mat _projectBoard({
+    required Charuco charuco,
+    required Camera camera,
+    required Vector translation,
+    required Matrix rotation,
+  }) {
+    // Scale the translation part of the transformation by the camera's focal
+    // length to simulate perspective projection
+    final pixelTranslation = translation * camera.focalLength;
+
+    // Drop the third column of rotation and concatenate the translation
+    final projectionMatrix = rotation
+        .filterColumns((_, index) => index != 2)
+        .insertColumns(2, [pixelTranslation]);
+
+    // Remove the third column of the transformation to get a 3x4 matrix for projection
+    final hMatrix = camera.matrixAsLinalg * projectionMatrix;
+
+    // Corners of the img
+    final height = charuco.boardImage.rows;
+    final width = charuco.boardImage.cols;
+    final sMatrix = Matrix.fromList([
+      [1, 0, -width / 2],
+      [0, 1, -height / 2],
+      [0, 0, 1],
+    ]);
+
+    // Compute the homography and warp the image
+    final hFinal = hMatrix * sMatrix;
+    return warpPerspective(charuco.boardImage, hFinal.toMat(), (
+      camera.sensorWidth.toInt(),
+      camera.sensorHeight.toInt(),
+    ), borderValue: Scalar(255));
   }
 
   @override
   void dispose() {}
 }
-    // def __init__(
-    //     self,
-    //     boards: Iterable[Charuco],
-    //     camera: Camera,
-    //     transformations: dict[Charuco, Iterable[Transformation]] = None,
-    // ):
-    //     """
-    //     A mock reader that simulates a video feed of Charuco boards with given transformations.
-    //     If no transformations are provided, a controller window is shown to manually adjust the
-    //     pose of the boards.
-    //     """
-    //     self._boards = boards
-
-    //     # Sanity checks for angles
-    //     if transformations is None:
-    //         self._frame_count = None
-    //         self._current_index = None
-    //     else:
-    //         self._frame_count = (
-    //             len(transformations[next(iter(transformations))])
-    //             if transformations
-    //             else 0
-    //         )
-    //         self._current_index = 0
-
-    //         for charuco in transformations.keys():
-    //             if len(transformations[charuco]) != self._frame_count:
-    //                 raise ValueError(
-    //                     "Number of transformations must match number of boards in all frames."
-    //                 )
-    //     self._transformations = transformations
-
-    //     self._camera = camera
-    //     self._dynamic_frame_ready = False
-
-    //     super().__init__()
 
 
-    // @property
-    // def frame_count(self) -> int | None:
-    //     return self._frame_count
-
-    // def transformations(self, charuco: Charuco) -> Transformation:
-    //     """
-    //     Return the current transformation for a given Charuco board.
-    //     """
-        
-    //     return self._transformations[charuco][self._current_index - 1]
-
-    // def __iter__(self) -> "CharucoMockReader":
-    //     self._current_index = 0
-    //     return self
-
-    // def _has_moved(self, _) -> bool:
-    //     self._dynamic_frame_ready = True
 
     // def _read_frame(self):
-    //     if self._current_index >= self._frame_count:
-    //         return None
-    //     # We increment now since the self.transformations uses the current_index - 1
-    //     self._current_index += 1
 
-    //     # First create a cv2 image with a white background which corresponds to a
-    //     # distant wall
-    //     frame = np.full(
-    //         (
-    //             int(self._camera.sensor_height),
-    //             int(self._camera.sensor_width),
-    //             3,
-    //         ),
-    //         255,
-    //         dtype=np.uint8,
-    //     )
 
-    //     # Move the image further away and rotate the boards and get their images
-    //     for board in self._boards:
-    //         img = self._project_board(
-    //             board.cv2_board_image,
-    //             transformation=self.transformations(charuco=board),
-    //         )
-    //         projected_img = cv2.cvtColor(src=img, code=cv2.COLOR_GRAY2BGR)
-
-    //         masked = projected_img < 255
-    //         frame[masked] = projected_img[masked]
 
     //     # Encode and decode to get a proper Frame object
     //     success, buf = cv2.imencode(".png", frame)
@@ -161,37 +200,6 @@ class CharucoMockReader implements MediaReader {
     //         return None
     //     return Frame(cv2.imdecode(buf, cv2.IMREAD_COLOR))
 
-    // def _project_board(
-    //     self,
-    //     img: np.ndarray,
-    //     transformation: Transformation,
-    // ) -> np.ndarray:
-    //     """
-    //     Project the Charuco board image with a given rotation and translation.
+    
 
-    //     Parameters:
-    //         img (np.ndarray): The Charuco board image to project.
-    //         transformation (Transformation): The transformation containing translation and rotation.
-    //     """
 
-    //     # Corners of the img
-    //     h, w = img.shape[:2]
-    //     s_matrix = np.array(
-    //         [[1, 0, -w / 2], [0, 1, -h / 2], [0, 0, 1]], dtype=np.float32
-    //     )
-
-    //     translation = (
-    //         transformation.translation.vector * self._camera.focal_length
-    //     )
-    //     rotation = transformation.rotation.matrix
-    //     rt_matrix = np.hstack((rotation, translation))
-    //     h_matrix = self._camera.matrix @ np.delete(rt_matrix, 2, 1)
-    //     h_final = h_matrix @ s_matrix
-
-    //     return cv2.warpPerspective(
-    //         img,
-    //         h_final,
-    //         (int(self._camera.sensor_width), int(self._camera.sensor_height)),
-    //         flags=cv2.INTER_LINEAR,
-    //         borderValue=255,
-    //     )

@@ -1,3 +1,4 @@
+import 'package:ml_linalg/linalg.dart';
 import 'package:opencv_dart/opencv_dart.dart';
 
 enum CameraModels {
@@ -47,6 +48,7 @@ class Camera {
   ///
   List<List<double>> matrix;
   Mat get matrixAsMat => Mat.from2DList(matrix, MatType(MatType.CV_64F));
+  Matrix get matrixAsLinalg => Matrix.fromList(matrix);
 
   ///
   /// Distortion coefficients (1x5).

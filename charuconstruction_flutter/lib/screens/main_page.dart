@@ -33,8 +33,8 @@ class _MainPageState extends State<MainPage> {
   @override
   Widget build(BuildContext context) {
     // TODO Move these temporary stuff to accessors
-    final mediaReader = ImageReader(
-      imagePath: '../run/charuco_4x6_24/tata.png',
+    final mediaReader = VideoReader(
+      videoPath: 'assets/rotating_charuco_board.mp4',
     );
     final charucoFilePaths = [
       '../run/charuco_4x6_24/board.json',

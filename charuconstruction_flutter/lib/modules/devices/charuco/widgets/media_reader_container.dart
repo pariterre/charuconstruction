@@ -1,8 +1,8 @@
 import 'dart:typed_data';
 
-import 'package:charuconstruction_flutter/modules/charucos/frame.dart';
 import 'package:flutter/material.dart';
 
+import '../frame.dart';
 import '../frame_analyser.dart';
 import '../media_reader.dart';
 

@@ -8,7 +8,7 @@ extension VectorExtensions on Vector {
   Mat toMat() => Mat.fromList(length, 1, MatType(MatType.CV_32F), toList());
 }
 
-enum Axis { x, y, z }
+enum CharucoAxis { x, y, z }
 
 extension MatrixExtensions on Matrix {
   /// Converts a rotation matrix to a rotation vector in rodriguez representation.
@@ -19,23 +19,26 @@ extension MatrixExtensions on Matrix {
     toList().map((e) => e.toList()).expand((i) => i).toList(),
   );
 
-  static Matrix fromEuler(List<(double, Axis)> angles, {bool degrees = true}) {
+  static Matrix fromEuler(
+    List<(double, CharucoAxis)> angles, {
+    bool degrees = true,
+  }) {
     final rotationMatrices = angles.map((angle) {
       final (value, axis) = angle;
       final rad = degrees ? value * pi / 180 : value;
 
       return switch (axis) {
-        Axis.x => Matrix.fromList([
+        CharucoAxis.x => Matrix.fromList([
           [1, 0, 0],
           [0, cos(rad), -sin(rad)],
           [0, sin(rad), cos(rad)],
         ]),
-        Axis.y => Matrix.fromList([
+        CharucoAxis.y => Matrix.fromList([
           [cos(rad), 0, sin(rad)],
           [0, 1, 0],
           [-sin(rad), 0, cos(rad)],
         ]),
-        Axis.z => Matrix.fromList([
+        CharucoAxis.z => Matrix.fromList([
           [cos(rad), -sin(rad), 0],
           [sin(rad), cos(rad), 0],
           [0, 0, 1],

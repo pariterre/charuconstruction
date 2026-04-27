@@ -1,8 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:charuconstruction_flutter/modules/charucos/charucos.dart'
-    as charucos;
 import 'package:charuconstruction_flutter/modules/devices/devices.dart';
 import 'package:flutter/material.dart';
 import 'package:ml_linalg/linalg.dart';
@@ -41,12 +39,10 @@ class _MainPageState extends State<MainPage> {
     ];
     final charucoBoards = charucoFilePaths.map((path) {
       final jsonString = File(path).readAsStringSync();
-      return charucos.Charuco.fromSerialized(jsonDecode(jsonString.toString()));
+      return Charuco.fromSerialized(jsonDecode(jsonString.toString()));
     }).toList();
-    final camera = charucos.CameraModels.pixel2.toCamera(
-      useVideoParameters: true,
-    );
-    final mediaReader = charucos.CharucoMockReader(
+    final camera = CameraModels.pixel2.toCamera(useVideoParameters: true);
+    final mediaReader = CharucoMockReader(
       camera: camera,
       charucos: charucoBoards,
       transformations: List.generate(
@@ -55,23 +51,23 @@ class _MainPageState extends State<MainPage> {
           (Vector.zero(3), Matrix.identity(3)),
           (
             Vector.fromList([0, 0, 4.5]),
-            charucos.MatrixExtensions.fromEuler([
-              (value * 0.5, charucos.Axis.x),
-              (-20.0, charucos.Axis.y),
-              (-30.0, charucos.Axis.z),
+            MatrixExtensions.fromEuler([
+              (value * 0.5, CharucoAxis.x),
+              (-20.0, CharucoAxis.y),
+              (-30.0, CharucoAxis.z),
             ]),
           ),
         ],
       ),
     );
-    final analyser = charucos.FrameAnalyserPipeline(
+    final analyser = FrameAnalyserPipeline(
       analysers: [
-        charucos.CharucoFrameAnalyser(
+        CharucoFrameAnalyser(
           charucoBoards: charucoBoards,
           camera: camera,
           ignoreReconstructionError: true,
         ),
-        charucos.VideoSaverAnalyser(outputPath: 'output.mp4'),
+        VideoSaverAnalyser(outputPath: 'output.mp4'),
       ],
     );
 
@@ -98,7 +94,7 @@ class _MainPageState extends State<MainPage> {
                   ),
                 ),
               ),
-              charucos.MediaReaderContainer(
+              MediaReaderContainer(
                 mediaReader: mediaReader,
                 analyser: analyser,
               ),

@@ -1,17 +1,18 @@
 import 'dart:io';
 
-import 'package:charuconstruction_flutter/modules/charucos/extensions.dart';
 import 'package:charuconstruction_flutter/utils/math.dart';
 import 'package:charuconstruction_flutter/utils/misc.dart';
 import 'package:dartcv4/dartcv.dart';
 import 'package:ml_linalg/linalg.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../device.dart';
 import 'camera.dart';
 import 'charuco_resolution.dart';
+import 'extensions.dart';
 import 'frame.dart';
 
-class Charuco {
+class Charuco extends Device {
   ///
   /// The total number of squares in the charuco board.
   ///

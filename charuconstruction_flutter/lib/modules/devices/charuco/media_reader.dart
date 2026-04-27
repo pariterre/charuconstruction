@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:camera/camera.dart';
 import 'package:ml_linalg/linalg.dart';
 import 'package:opencv_dart/opencv.dart';
 
@@ -39,28 +40,47 @@ class ImageReader implements MediaReader {
   }
 }
 
-class VideoReader implements MediaReader {
-  final String videoPath;
-  late final VideoCapture _capture;
+class WebcamReader implements MediaReader {
+  final List<CameraDescription> _availableCameras = [];
+  CameraController? webcamController;
 
-  VideoReader({required this.videoPath})
-    : _capture = VideoCapture.fromFile(videoPath);
+  WebcamReader() {
+    _initializeWebcam();
+  }
+
+  Future<void> _initializeWebcam() async {
+    _availableCameras.addAll(await availableCameras());
+
+    if (_availableCameras.isEmpty) {
+      throw Exception("No cameras available");
+    }
+
+    webcamController = CameraController(
+      _availableCameras.first,
+      ResolutionPreset.high,
+    );
+    await webcamController!.initialize();
+  }
 
   @override
   Stream<Frame?> readFrames() async* {
-    if (!_capture.isOpened) throw Exception('Failed to open video: $videoPath');
+    if (webcamController == null) yield null;
 
-    while (true) {
-      final (isSuccess, mat) = _capture.read();
-      if (!isSuccess) break; // End of video or error
-
-      yield Frame(mat);
+    while (webcamController != null) {
+      try {
+        final cameraImage = await webcamController!.takePicture();
+        final bytes = await cameraImage.readAsBytes();
+        yield Frame(imdecode(bytes, IMREAD_COLOR));
+      } catch (e) {
+        yield null;
+      }
     }
+    yield null;
   }
 
   @override
   void dispose() {
-    _capture.release();
+    webcamController?.dispose();
   }
 }
 

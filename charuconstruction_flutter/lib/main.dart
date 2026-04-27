@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   UniversalBleInterface.useMocker = const bool.fromEnvironment(
     'CHARUCONSTRUCTION_USE_BLE_MOCKER',
     defaultValue: false,

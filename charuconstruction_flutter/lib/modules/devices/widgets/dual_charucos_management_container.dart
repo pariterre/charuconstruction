@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../charuco/camera.dart';
 import '../charuco/charuco.dart';
@@ -33,19 +34,31 @@ class _DualCharucosManagementContainerState
   String? _statusMessage;
   String? _errorMessage;
 
-  final _availableCharucos = Directory('assets/charucos')
-      .listSync(recursive: true)
-      .whereType<File>()
-      .where((file) => file.path.endsWith('board.json'))
-      .map((file) => file.path)
-      .toList();
+  bool _isInitialized = false;
+  late final _availableCharucos = <String>[];
+
   final List<String> _selectedCharucos = [];
   CameraModels _selectedCamera = CameraModels.pixel2;
   late final Set<AvailableFrameAnalysers> _selectedFrameAnalyser;
 
   @override
   void initState() {
+    super.initState();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
     final isFirst = _device.analysers == null;
+
+    final assetManifest = await AssetManifest.loadFromAssetBundle(rootBundle);
+    final assets = assetManifest.listAssets();
+
+    _availableCharucos.addAll(
+      assets
+          .where((filePath) => filePath.endsWith('board.json'))
+          .map((filePath) => filePath)
+          .toList(),
+    );
 
     final analyzers = isFirst
         ? null
@@ -82,13 +95,21 @@ class _DualCharucosManagementContainerState
                 .toList(),
     );
 
-    super.initState();
+    if (mounted) {
+      setState(() {
+        _isInitialized = true;
+      });
+    }
   }
 
   String _videoOutputPath = '';
 
   @override
   Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return Center(child: CircularProgressIndicator());
+    }
+
     return Column(
       children: [
         SizedBox(height: 20),
@@ -226,10 +247,11 @@ class _DualCharucosManagementContainerState
           as DualCharucos;
 
   Future<void> _connect() async {
-    final charucos = _selectedCharucos.map((path) {
-      final jsonString = File(path).readAsStringSync();
+    final charucosFutures = _selectedCharucos.map((path) async {
+      final jsonString = await rootBundle.loadString(path);
       return Charuco.fromSerialized(jsonDecode(jsonString.toString()));
     }).toList();
+    final charucos = await Future.wait(charucosFutures);
 
     final camera = _selectedCamera.toCamera(useVideoParameters: true);
 

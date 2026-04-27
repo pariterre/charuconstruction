@@ -19,9 +19,7 @@ enum AvailableDualCharucos {
 
   static DualCharucos factory() {
     return switch (charucoToConstruct) {
-      AvailableDualCharucos.dualCharucosFromDevice => throw UnimplementedError(
-        'The real Dual Charucos device is not yet implemented. Please use the mocker for now.',
-      ),
+      AvailableDualCharucos.dualCharucosFromDevice => WebcamDualCharucos(),
       AvailableDualCharucos.dualCharucosMocker => MockedDualCharucos(),
     };
   }
@@ -51,6 +49,19 @@ abstract class DualCharucos extends CharucoDevice {
     _analysers = FrameAnalyserPipeline(analysers: analysers);
 
     return output;
+  }
+}
+
+class WebcamDualCharucos extends DualCharucos {
+  late final WebcamReader _webcamReader = WebcamReader();
+
+  @override
+  MediaReader get mediaReader => _webcamReader;
+
+  @override
+  Future<void> disconnect() async {
+    _webcamReader.dispose();
+    return await super.disconnect();
   }
 }
 

@@ -27,9 +27,9 @@ class BleDeviceManagerContainer extends StatefulWidget {
       _BleDeviceManagerContainerState();
 }
 
-class _BleDeviceManagerContainerState extends State<BleDeviceManagerContainer> {
-  AvailableDevices _selectedDevice = AvailableDevices.values.first;
+AvailableDevices _lastSelectedDevice = AvailableDevices.values.first;
 
+class _BleDeviceManagerContainerState extends State<BleDeviceManagerContainer> {
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -44,10 +44,10 @@ class _BleDeviceManagerContainerState extends State<BleDeviceManagerContainer> {
                 child: Text(device.toString().split('.').last),
               );
             }).toList(),
-            value: _selectedDevice,
+            value: _lastSelectedDevice,
             onChanged: _selectDevice,
           ),
-          switch (_selectedDevice) {
+          switch (_lastSelectedDevice) {
             AvailableDevices.b24 => const B24ManagementContainer(),
             AvailableDevices.dualCharucos =>
               const DualCharucosManagementContainer(),
@@ -60,7 +60,7 @@ class _BleDeviceManagerContainerState extends State<BleDeviceManagerContainer> {
   void _selectDevice(AvailableDevices? device) {
     if (device == null) return;
     setState(() {
-      _selectedDevice = device;
+      _lastSelectedDevice = device;
     });
   }
 }

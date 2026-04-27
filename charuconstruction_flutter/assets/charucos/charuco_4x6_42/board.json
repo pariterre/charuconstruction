@@ -1,0 +1,9 @@
+{
+  "vertical_squares_count": 6,
+  "horizontal_squares_count": 4,
+  "square_len": 0.04,
+  "marker_len": 0.02,
+  "resolution": "DPI_300",
+  "aruco_dict": 15,
+  "seed": 42
+}

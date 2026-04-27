@@ -175,8 +175,8 @@ sandbox/
 run/charuco_*/
 run/data
 run/recording
-*.png
-*.xcf
+run/*.png
+run/*.xcf
 
 .vscode/launch.json
 

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 
 import '../charuco/camera.dart';
@@ -26,6 +27,14 @@ class _DualCharucosManagementContainerState
   String? _statusMessage;
   String? _errorMessage;
 
+  final _availableCharucos = Directory('assets/charucos')
+      .listSync(recursive: true)
+      .whereType<File>()
+      .where((file) => file.path.endsWith('board.json'))
+      .map((file) => file.path)
+      .toList();
+  late final List<String> _selectedCharucos = _availableCharucos;
+  CameraModels _selectedCamera = CameraModels.pixel2;
   late final Set<AvailableFrameAnalysers> _selectedFrameAnalyser;
 
   @override
@@ -59,7 +68,61 @@ class _DualCharucosManagementContainerState
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Checkboxes to select the frame analysers to use, will be passed as arguments to the device when connecting
+        SizedBox(height: 20),
+        Text('Select the Charuco boards you want to use'),
+        ..._availableCharucos.map((charucoPath) {
+          final charucoName =
+              charucoPath
+                  .split('/')
+                  .firstWhereOrNull(
+                    (segment) => segment.startsWith('charuco_'),
+                  ) ??
+              'Unknown Charuco';
+          return SizedBox(
+            width: 400,
+            child: CheckboxListTile(
+              title: Text(charucoName),
+              value: _selectedCharucos.contains(charucoPath),
+              enabled: _device.isNotConnected,
+              onChanged: (value) {
+                setState(() {
+                  if (value!) {
+                    _selectedCharucos.add(charucoPath);
+                  } else {
+                    _selectedCharucos.remove(charucoPath);
+                  }
+                });
+              },
+            ),
+          );
+        }),
+
+        SizedBox(height: 20),
+        Text('Select the camera'),
+        RadioGroup(
+          groupValue: _selectedCamera,
+          onChanged: (value) {
+            setState(() {
+              _selectedCamera = value!;
+            });
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: CameraModels.values.map((camera) {
+              return SizedBox(
+                width: 400,
+                child: RadioListTile<CameraModels>(
+                  title: Text(camera.toString()),
+                  enabled: _device.isNotConnected,
+                  value: camera,
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+
+        SizedBox(height: 20),
+        Text('Select the analysers you want to apply to the Charucos feed'),
         ...AvailableFrameAnalysers.values.map((analyser) {
           return SizedBox(
             width: 400,
@@ -144,17 +207,24 @@ class _DualCharucosManagementContainerState
       DevicesProvider.instance.device(AvailableDevices.dualCharucos)
           as DualCharucos;
 
-  final charucos =
-      [
-        '../run/charuco_4x6_24/board.json',
-        '../run/charuco_4x6_42/board.json',
-      ].map((path) {
-        final jsonString = File(path).readAsStringSync();
-        return Charuco.fromSerialized(jsonDecode(jsonString.toString()));
-      }).toList();
-  final camera = CameraModels.pixel2.toCamera(useVideoParameters: true);
-
   Future<void> _connect() async {
+    // Fetch all the charuco boards in the assets/charuco_*/board.json files
+
+    if (_selectedCharucos.length != _availableCharucos.length) {
+      setState(() {
+        _isBusy = false;
+        _statusMessage = 'Connection to the Charucos feed failed';
+        _errorMessage = 'All the charucos must currently be selected';
+      });
+      return;
+    }
+    final charucos = _selectedCharucos.map((path) {
+      final jsonString = File(path).readAsStringSync();
+      return Charuco.fromSerialized(jsonDecode(jsonString.toString()));
+    }).toList();
+
+    final camera = _selectedCamera.toCamera(useVideoParameters: true);
+
     setState(() {
       _isBusy = true;
       _statusMessage = 'Connecting to the Charucos feed...';

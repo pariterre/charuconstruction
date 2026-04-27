@@ -34,7 +34,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-
+  assets:
+    - assets/charucos/charuco_4x6_24/board.json
+    - assets/charucos/charuco_4x6_42/board.json
 
 hooks:
   user_defines:

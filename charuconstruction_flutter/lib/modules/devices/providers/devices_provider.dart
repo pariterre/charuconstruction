@@ -1,34 +1,8 @@
 import 'package:charuconstruction_flutter/modules/data/data.dart';
 import 'package:charuconstruction_flutter/utils/generic_listener.dart';
 
-import '../ble/b24_force_sensor.dart';
+import '../concrete_devices/available_devices.dart';
 import '../device.dart';
-
-enum AvailableDevices {
-  b24;
-
-  Device _factory() {
-    // Setup the device
-    final device = switch (this) {
-      AvailableDevices.b24 => B24ForceSensor(),
-    };
-
-    // Listen to status changes and notify the provider
-    device.onConnectionStatusChanged.listen((_) {
-      DevicesProvider.instance.onDeviceStatusChanged.notifyListeners(
-        (callback) => callback(this),
-      );
-    });
-    device.onReadingStatusChanged.listen((_) {
-      DevicesProvider.instance.onDeviceStatusChanged.notifyListeners(
-        (callback) => callback(this),
-      );
-    });
-
-    // Return the device ready to be used
-    return device;
-  }
-}
 
 class DevicesProvider {
   ///
@@ -46,7 +20,7 @@ class DevicesProvider {
   ///
   DevicesProvider._() {
     for (final device in AvailableDevices.values) {
-      final newDevice = device._factory();
+      final newDevice = device.factory();
 
       // Add the device to the list of devices
       _devices[device] = newDevice;

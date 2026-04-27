@@ -1,9 +1,6 @@
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:charuconstruction_flutter/modules/devices/devices.dart';
+import 'package:charuconstruction_flutter/modules/devices/widgets/device_extensions.dart';
 import 'package:flutter/material.dart';
-import 'package:ml_linalg/linalg.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -32,45 +29,6 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
-    // TODO Move these temporary stuff to accessors
-    final charucoFilePaths = [
-      '../run/charuco_4x6_24/board.json',
-      '../run/charuco_4x6_42/board.json',
-    ];
-    final charucoBoards = charucoFilePaths.map((path) {
-      final jsonString = File(path).readAsStringSync();
-      return Charuco.fromSerialized(jsonDecode(jsonString.toString()));
-    }).toList();
-    final camera = CameraModels.pixel2.toCamera(useVideoParameters: true);
-    final mediaReader = CharucoMockReader(
-      camera: camera,
-      charucos: charucoBoards,
-      transformations: List.generate(
-        100,
-        (value) => [
-          (Vector.zero(3), Matrix.identity(3)),
-          (
-            Vector.fromList([0, 0, 4.5]),
-            MatrixExtensions.fromEuler([
-              (value * 0.5, CharucoAxis.x),
-              (-20.0, CharucoAxis.y),
-              (-30.0, CharucoAxis.z),
-            ]),
-          ),
-        ],
-      ),
-    );
-    final analyser = FrameAnalyserPipeline(
-      analysers: [
-        CharucoFrameAnalyser(
-          charucoBoards: charucoBoards,
-          camera: camera,
-          ignoreReconstructionError: true,
-        ),
-        VideoSaverAnalyser(outputPath: 'output.mp4'),
-      ],
-    );
-
     return Scaffold(
       appBar: AppBar(
         title: Text('Charuconstruction'),
@@ -88,15 +46,11 @@ class _MainPageState extends State<MainPage> {
               ...DevicesProvider.instance.connectedDevices.map(
                 (device) => Padding(
                   padding: const EdgeInsets.only(top: 20.0),
-                  child: DeviceDataContainer(
+                  child: device.deviceDataContainer(
                     key: ValueKey(device),
                     device: device,
                   ),
                 ),
-              ),
-              MediaReaderContainer(
-                mediaReader: mediaReader,
-                analyser: analyser,
               ),
             ],
           ),

@@ -4,8 +4,8 @@ import 'dart:typed_data';
 
 import 'package:logging/logging.dart';
 
-import 'ble_device.dart';
-import 'universal_ble_interface.dart';
+import '../ble/ble_device.dart';
+import '../ble/universal_ble_interface.dart';
 
 final _logger = Logger('B24ForceSensor');
 

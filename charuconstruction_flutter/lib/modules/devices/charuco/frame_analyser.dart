@@ -6,6 +6,17 @@ import 'charuco.dart';
 import 'extensions.dart';
 import 'frame.dart';
 
+enum AvailableFrameAnalysers {
+  reconstructCharuco,
+  videoSaver;
+
+  @override
+  String toString() => switch (this) {
+    AvailableFrameAnalysers.reconstructCharuco => 'Reconstruct Charucos',
+    AvailableFrameAnalysers.videoSaver => 'Save video',
+  };
+}
+
 abstract class FrameAnalyser {
   ///
   /// Analyse the frames from the media reader.
@@ -18,12 +29,12 @@ abstract class FrameAnalyser {
   void dispose();
 }
 
-class CharucoFrameAnalyser extends FrameAnalyser {
+class ReconstructCharucoFrameAnalyser extends FrameAnalyser {
   final List<Charuco> charucoBoards;
   final Camera camera;
   final bool ignoreReconstructionError;
 
-  CharucoFrameAnalyser({
+  ReconstructCharucoFrameAnalyser({
     required this.charucoBoards,
     required this.camera,
     this.ignoreReconstructionError = false,
@@ -97,6 +108,7 @@ class CharucoFrameAnalyser extends FrameAnalyser {
 
 class FrameAnalyserPipeline extends FrameAnalyser {
   final List<FrameAnalyser> _analysers;
+  List<FrameAnalyser> get analysers => _analysers;
 
   FrameAnalyserPipeline({required List<FrameAnalyser> analysers})
     : _analysers = analysers;

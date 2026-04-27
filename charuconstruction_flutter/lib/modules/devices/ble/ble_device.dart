@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:logging/logging.dart';
 
 import '../device.dart';
+import '../device_exceptions.dart';
 import 'ble_exceptions.dart';
 import 'universal_ble_interface.dart';
 
@@ -15,19 +16,12 @@ abstract class BleDevice extends Device {
   @override
   String? get name => _device?.name;
 
-  @override
+  ///
+  /// The MAC address of the device.
   String? get macAddress => _device?.deviceId;
 
   bool get deviceFound => _device != null;
   bool get deviceNotFound => !deviceFound;
-
-  bool _isConnected = false;
-  @override
-  bool get isConnected => _isConnected;
-
-  bool _isReading = false;
-  @override
-  bool get isReading => _isReading;
 
   ///
   /// API METHODS
@@ -36,6 +30,8 @@ abstract class BleDevice extends Device {
   Future<void> connect({int? pinNumber, int maxRetries = 10}) async {
     _logger.info('Connecting to ${_device?.name} (${_device?.deviceId})...');
     int retry = 0;
+    bool isConnected = false;
+
     while (!isConnected && retry < maxRetries) {
       try {
         // If the device is not set, search for it
@@ -45,7 +41,7 @@ abstract class BleDevice extends Device {
         if (!await _device!.isConnected) throw Exception('Connection failed');
 
         // Finalize connection
-        _isConnected = true;
+        isConnected = true;
       } catch (e) {
         _logger.warning(
           'Failed to connect ($e), retrying... ($retry/$maxRetries)',
@@ -60,10 +56,16 @@ abstract class BleDevice extends Device {
     if (!isConnected) {
       // Rescan for resetting the device as it was before the connection attempts, then throw the exception
       await scan();
-      throw BleDeviceCouldNotConnect(
+      throw DeviceCouldNotConnect(
         'Failed to connect after $maxRetries attempts.',
       );
     }
+
+    // If we get here, we could connect. Now we need to send the pin number
+    // for that, the device must know they are connected, so we call super.connect()
+    // to update the internal state of the device. However, if the PIN fails,
+    // we need to disconnect and reset the state.
+    await super.connect();
 
     // If a pin number was provided, send it and subscribe to notifications. If any of these steps fail, disconnect and retry.
     try {
@@ -83,65 +85,22 @@ abstract class BleDevice extends Device {
       } catch (e) {
         _logger.warning('Failed to disconnect from device: $e');
       }
-      _isConnected = false;
-    }
 
-    if (!isConnected) {
-      throw BleDeviceCouldNotConnect(
+      // PIN failure or subscription so we disconnect the device immediately
+      try {
+        await disconnect();
+      } catch (e) {
+        // Do nothing if it fails to disconnect
+      }
+      throw DeviceCouldNotConnect(
         'Failed to finalize connection: device is connected but finalization steps failed.',
       );
     }
-
-    onConnectionStatusChanged.notifyListeners(
-      (listener) => listener(isConnected),
-    );
-  }
-
-  @override
-  Future<void> disconnect() async {
-    try {
-      await stopReading();
-      await _updateSubscribeStatus(isSubscribing: false);
-      await _device?.disconnect();
-      _isConnected = false;
-    } catch (e) {
-      throw BleDeviceCouldNotDisconnect('Failed to disconnect: $e');
-    }
-
-    onConnectionStatusChanged.notifyListeners(
-      (listener) => listener(isConnected),
-    );
-  }
-
-  @override
-  Future<void> startReading() async {
-    if (!isConnected) {
-      throw BleDeviceNotConnected(
-        'Cannot start reading: device is not connected.',
-      );
-    }
-
-    _isReading = true;
-    onReadingStatusChanged.notifyListeners((listener) => listener(isReading));
-    _logger.info('Reading data!');
-  }
-
-  @override
-  Future<void> stopReading() async {
-    if (!isConnected) {
-      throw BleDeviceNotConnected(
-        'Cannot stop reading: device is not connected.',
-      );
-    }
-
-    _isReading = false;
-    onReadingStatusChanged.notifyListeners((listener) => listener(isReading));
-    _logger.info('Stopped reading data!');
   }
 
   Future<void> _updateSubscribeStatus({required bool isSubscribing}) async {
     if (!isConnected) {
-      throw BleDeviceNotConnected(
+      throw DeviceNotConnected(
         'Cannot subscribe to notifications: device is not connected.',
       );
     }
@@ -238,7 +197,7 @@ abstract class BleDevice extends Device {
     List<int> value,
   ) async {
     if (!isConnected) {
-      throw BleDeviceNotConnected(
+      throw DeviceNotConnected(
         'Cannot write to characteristic: device is not connected.',
       );
     }
@@ -256,10 +215,12 @@ abstract class BleDevice extends Device {
         }
       }
     } catch (e) {
-      throw CharacteristicWriteFailed('Failed to write to characteristic: $e');
+      throw BleCharacteristicWriteFailed(
+        'Failed to write to characteristic: $e',
+      );
     }
 
-    throw CharacteristicNotFound('Characteristic not found');
+    throw BleCharacteristicNotFound('Characteristic not found');
   }
 
   static List<int> packU32(int x) {

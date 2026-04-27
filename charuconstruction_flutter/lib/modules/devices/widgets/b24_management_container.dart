@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../ble/b24_force_sensor.dart';
 import '../ble/ble_exceptions.dart';
+import '../concrete_devices/available_devices.dart';
+import '../concrete_devices/b24_force_sensor.dart';
+import '../device_exceptions.dart';
 import '../providers/devices_provider.dart';
 
 class B24ManagementContainer extends StatefulWidget {
@@ -128,7 +130,7 @@ class _B24ManagementContainerState extends State<B24ManagementContainer> {
     try {
       await _device.scan();
       if (_device.deviceNotFound) {
-        throw BleDeviceNotFound(
+        throw DeviceNotFound(
           'B24 Sensor not found. Please make sure it is in pairing mode.',
         );
       }
@@ -138,7 +140,7 @@ class _B24ManagementContainerState extends State<B24ManagementContainer> {
       _statusMessage = 'Scan failed';
       _errorMessage =
           'Bluetooth is turned off. Please turn it on and try again.';
-    } on BleDeviceNotFound catch (e) {
+    } on DeviceNotFound catch (e) {
       _statusMessage = 'Scan failed';
       _errorMessage = e.toString();
     } catch (e) {
@@ -162,7 +164,7 @@ class _B24ManagementContainerState extends State<B24ManagementContainer> {
     try {
       await _device.connect(pinNumber: _pinNumber);
       _statusMessage = 'Connected to B24 Sensor: ${_device.name}';
-    } on BleDeviceCouldNotConnect catch (e) {
+    } on DeviceCouldNotConnect catch (e) {
       _statusMessage = 'Connection failed';
       _errorMessage = e.toString();
     } catch (e) {
@@ -186,7 +188,7 @@ class _B24ManagementContainerState extends State<B24ManagementContainer> {
     try {
       await _device.disconnect();
       _statusMessage = 'Disconnected from B24 Sensor: ${_device.name}';
-    } on BleDeviceCouldNotDisconnect catch (e) {
+    } on DeviceCouldNotDisconnect catch (e) {
       _statusMessage = 'Disconnection failed';
       _errorMessage = e.toString();
     } catch (e) {
@@ -210,7 +212,7 @@ class _B24ManagementContainerState extends State<B24ManagementContainer> {
     try {
       await _device.startReading();
       _statusMessage = 'Started reading from B24 Sensor: ${_device.name}';
-    } on BleDeviceNotConnected catch (e) {
+    } on DeviceNotConnected catch (e) {
       _statusMessage = 'Start reading failed';
       _errorMessage = e.toString();
     } catch (e) {
@@ -234,7 +236,7 @@ class _B24ManagementContainerState extends State<B24ManagementContainer> {
     try {
       await _device.stopReading();
       _statusMessage = 'Stopped reading from B24 Sensor: ${_device.name}';
-    } on BleDeviceNotConnected catch (e) {
+    } on DeviceNotConnected catch (e) {
       _statusMessage = 'Stop reading failed';
       _errorMessage = e.toString();
     } catch (e) {

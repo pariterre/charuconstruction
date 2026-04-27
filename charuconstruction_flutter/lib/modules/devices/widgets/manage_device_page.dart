@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../providers/devices_provider.dart';
+import '../concrete_devices/available_devices.dart';
 import 'b24_management_container.dart';
+import 'dual_charucos_management_container.dart';
 
 Future<void> manageDevicesDialog(BuildContext context) async {
   return await showDialog(
@@ -9,7 +10,7 @@ Future<void> manageDevicesDialog(BuildContext context) async {
     builder: (context) => Dialog(
       child: Scaffold(
         appBar: AppBar(
-          title: Text('Manage BLE Devices'),
+          title: Text('Manage Devices'),
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         ),
         body: const BleDeviceManagerContainer(),
@@ -48,6 +49,8 @@ class _BleDeviceManagerContainerState extends State<BleDeviceManagerContainer> {
           ),
           switch (_selectedDevice) {
             AvailableDevices.b24 => const B24ManagementContainer(),
+            AvailableDevices.dualCharucos =>
+              const DualCharucosManagementContainer(),
           },
         ],
       ),

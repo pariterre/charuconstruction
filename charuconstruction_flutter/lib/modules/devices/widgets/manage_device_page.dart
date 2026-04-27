@@ -13,23 +13,22 @@ Future<void> manageDevicesDialog(BuildContext context) async {
           title: Text('Manage Devices'),
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         ),
-        body: const BleDeviceManagerContainer(),
+        body: const DeviceManagerContainer(),
       ),
     ),
   );
 }
 
-class BleDeviceManagerContainer extends StatefulWidget {
-  const BleDeviceManagerContainer({super.key});
+class DeviceManagerContainer extends StatefulWidget {
+  const DeviceManagerContainer({super.key});
 
   @override
-  State<BleDeviceManagerContainer> createState() =>
-      _BleDeviceManagerContainerState();
+  State<DeviceManagerContainer> createState() => _DeviceManagerContainerState();
 }
 
 AvailableDevices _lastSelectedDevice = AvailableDevices.values.first;
 
-class _BleDeviceManagerContainerState extends State<BleDeviceManagerContainer> {
+class _DeviceManagerContainerState extends State<DeviceManagerContainer> {
   @override
   Widget build(BuildContext context) {
     return Center(

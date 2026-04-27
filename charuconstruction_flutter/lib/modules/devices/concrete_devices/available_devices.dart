@@ -11,7 +11,7 @@ enum AvailableDevices {
     // Setup the device
     final device = switch (this) {
       AvailableDevices.b24 => B24ForceSensor(),
-      AvailableDevices.dualCharucos => DualCharucos(),
+      AvailableDevices.dualCharucos => AvailableDualCharucos.factory(),
     };
 
     // Listen to status changes and notify the provider

@@ -20,10 +20,12 @@ class MediaReaderContainer extends StatefulWidget {
 }
 
 class _MediaReaderContainerState extends State<MediaReaderContainer> {
+  late final Stream<Frame?> _frameStream = widget.mediaReader.readFrames();
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(
-      stream: widget.mediaReader.readFrames(),
+      stream: _frameStream,
       builder: (context, snapshot) {
         return FittedBox(
           fit: BoxFit.contain,

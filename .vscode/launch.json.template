@@ -71,11 +71,12 @@
       "env": {
       },
       "args": [
-        "--dart-define=CHARUCONSTRUCTION_USE_B24_MOCKER=true"
+        "--dart-define=CHARUCONSTRUCTION_USE_B24_MOCKER=< true | [false] >",
+        "--dart-define=CHARUCONSTRUCTION_USE_CHARUCO_MOCKER=< true | [false] >",
       ],
       "toolArgs": [
-        "--dart-define",
-        "CHARUCONSTRUCTION_USE_BLE_MOCKER=< true | [false] >",
+        "--dart-define=CHARUCONSTRUCTION_USE_BLE_MOCKER=< true | [false] >",
+        "--dart-define=CHARUCONSTRUCTION_USE_CHARUCO_MOCKER=< true | [false] >",
       ],
     },
   ]

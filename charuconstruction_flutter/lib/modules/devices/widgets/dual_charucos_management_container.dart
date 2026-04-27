@@ -12,6 +12,12 @@ import '../concrete_devices/dual_charucos.dart';
 import '../device_exceptions.dart';
 import '../providers/devices_provider.dart';
 
+String _charucoNameFromPath(String path) =>
+    path
+        .split('/')
+        .firstWhereOrNull((segment) => segment.startsWith('charuco_')) ??
+    'Unknown Charuco';
+
 class DualCharucosManagementContainer extends StatefulWidget {
   const DualCharucosManagementContainer({super.key});
 
@@ -33,13 +39,15 @@ class _DualCharucosManagementContainerState
       .where((file) => file.path.endsWith('board.json'))
       .map((file) => file.path)
       .toList();
-  late final List<String> _selectedCharucos = _availableCharucos;
+  final List<String> _selectedCharucos = [];
   CameraModels _selectedCamera = CameraModels.pixel2;
   late final Set<AvailableFrameAnalysers> _selectedFrameAnalyser;
 
   @override
   void initState() {
-    final analyzers = _device.analysers == null
+    final isFirst = _device.analysers == null;
+
+    final analyzers = isFirst
         ? null
         : _device.analysers is FrameAnalyserPipeline
         ? (_device.analysers as FrameAnalyserPipeline).analysers
@@ -59,6 +67,21 @@ class _DualCharucosManagementContainerState
             }
           }).toSet();
 
+    _selectedCharucos.addAll(
+      isFirst
+          ? _availableCharucos.map((e) => e).toList()
+          : _availableCharucos
+                .where(
+                  (e) => _device.charucos.any((charuco) {
+                    final name =
+                        'charuco_${charuco.horizontalSquaresCount}x${charuco.verticalSquaresCount}_${charuco.seed}';
+
+                    return name == _charucoNameFromPath(e);
+                  }),
+                )
+                .toList(),
+    );
+
     super.initState();
   }
 
@@ -71,13 +94,8 @@ class _DualCharucosManagementContainerState
         SizedBox(height: 20),
         Text('Select the Charuco boards you want to use'),
         ..._availableCharucos.map((charucoPath) {
-          final charucoName =
-              charucoPath
-                  .split('/')
-                  .firstWhereOrNull(
-                    (segment) => segment.startsWith('charuco_'),
-                  ) ??
-              'Unknown Charuco';
+          final charucoName = _charucoNameFromPath(charucoPath);
+
           return SizedBox(
             width: 400,
             child: CheckboxListTile(
@@ -208,16 +226,6 @@ class _DualCharucosManagementContainerState
           as DualCharucos;
 
   Future<void> _connect() async {
-    // Fetch all the charuco boards in the assets/charuco_*/board.json files
-
-    if (_selectedCharucos.length != _availableCharucos.length) {
-      setState(() {
-        _isBusy = false;
-        _statusMessage = 'Connection to the Charucos feed failed';
-        _errorMessage = 'All the charucos must currently be selected';
-      });
-      return;
-    }
     final charucos = _selectedCharucos.map((path) {
       final jsonString = File(path).readAsStringSync();
       return Charuco.fromSerialized(jsonDecode(jsonString.toString()));

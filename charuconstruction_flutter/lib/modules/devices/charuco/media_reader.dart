@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:ml_linalg/linalg.dart';
 import 'package:opencv_dart/opencv.dart';
 
@@ -64,11 +66,6 @@ class VideoReader implements MediaReader {
 
 class CharucoMockReader implements MediaReader {
   ///
-  /// The number of frames in the mock reader is determined by the length of the transformations list.
-  ///
-  final int frameCount;
-
-  ///
   /// The list of Charuco boards to simulate. Each board will be transformed according to the provided transformations.
   ///
   final List<Charuco> charucos;
@@ -79,7 +76,7 @@ class CharucoMockReader implements MediaReader {
   /// transformations (translation, rotation) for each board in that frame.
   /// Therefore each inner list should have the same length as the number of Charuco boards.
   ///
-  final List<List<(Vector, Matrix)>> transformations;
+  final Stream<List<(Vector, Matrix)>> transformations;
 
   ///
   /// The camera parameters to use for projecting the Charuco boards in the mock frames.
@@ -89,23 +86,14 @@ class CharucoMockReader implements MediaReader {
 
   CharucoMockReader({
     required this.charucos,
-    required this.transformations,
     required this.camera,
-  }) : frameCount = transformations.isNotEmpty ? transformations.length : 0 {
-    // Sanity checks for angles
-    for (var frame in transformations) {
-      if (frame.length != charucos.length) {
-        throw Exception(
-          "Number of transformations must match number of boards in all frames.",
-        );
-      }
-    }
-  }
+    required this.transformations,
+  });
 
   @override
   Stream<Frame?> readFrames() async* {
     // Move the board further away and rotate the boards and get their images
-    for (final frameTransformations in transformations) {
+    await for (final frameTransformations in transformations) {
       // First create a white background which corresponds to a distant wall
       Mat frame = Mat.fromScalar(
         camera.sensorHeight.toInt(),
@@ -136,7 +124,6 @@ class CharucoMockReader implements MediaReader {
       final (isSuccess, buf) = imencode(".png", frame);
       if (!isSuccess) break;
       yield Frame(imdecode(buf, IMREAD_COLOR));
-      await Future.delayed(const Duration(milliseconds: 100)); // Simulate delay
     }
 
     yield null;
@@ -189,19 +176,3 @@ class CharucoMockReader implements MediaReader {
   @override
   void dispose() {}
 }
-
-
-
-    // def _read_frame(self):
-
-
-
-    //     # Encode and decode to get a proper Frame object
-    //     success, buf = cv2.imencode(".png", frame)
-    //     if not success:
-    //         return None
-    //     return Frame(cv2.imdecode(buf, cv2.IMREAD_COLOR))
-
-    
-
-

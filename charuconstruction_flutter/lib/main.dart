@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:charuconstruction_flutter/modules/devices/concrete_devices/dual_charucos.dart';
 import 'package:charuconstruction_flutter/modules/devices/devices.dart';
 import 'package:charuconstruction_flutter/screens/main_page.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +12,15 @@ Future<void> main() async {
     defaultValue: false,
   );
   UniversalBleInterface.mockedDevices.add(B24MockCharuconstructionBleDevice());
+
+  final useCharucoMocker = const bool.fromEnvironment(
+    'CHARUCONSTRUCTION_USE_CHARUCO_MOCKER',
+    defaultValue: false,
+  );
+  if (useCharucoMocker) {
+    AvailableDualCharucos.charucoToConstruct =
+        AvailableDualCharucos.dualCharucosMocker;
+  }
 
   // Setup logging
   Logger.root.level = Level.ALL;

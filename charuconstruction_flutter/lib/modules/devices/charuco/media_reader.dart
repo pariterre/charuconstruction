@@ -98,28 +98,25 @@ class CharucoMockReader implements MediaReader {
       Mat frame = Mat.fromScalar(
         camera.sensorHeight.toInt(),
         camera.sensorWidth.toInt(),
-        MatType.CV_16UC(3),
-        Scalar(0xFFFF, 0xFFFF, 0xFFFF),
+        MatType.CV_8UC(3),
+        Scalar(0xFF / 2, 0xFF / 2, 0xFF / 2),
       );
 
-      for (final charucoTransformation in frameTransformations) {
+      for (final (charucoTransformation) in frameTransformations) {
+        final translation = charucoTransformation.$1;
+        final rotation = charucoTransformation.$2;
         final board =
             charucos[frameTransformations.indexOf(charucoTransformation)];
-        final projectedBoard = _projectBoard(
+        final (projectedBoard, mask) = _projectBoard(
           charuco: board,
           camera: camera,
-          translation: charucoTransformation.$1,
-          rotation: charucoTransformation.$2,
+          translation: translation,
+          rotation: rotation,
         );
 
-        final (_, mask) = threshold(
-          projectedBoard,
-          0xFFFF - 1,
-          0xFFFF,
-          THRESH_BINARY_INV,
-        );
         projectedBoard.copyTo(frame, mask: mask);
       }
+
       // Encode and decode to get a proper Frame object
       final (isSuccess, buf) = imencode(".png", frame);
       if (!isSuccess) break;
@@ -138,7 +135,9 @@ class CharucoMockReader implements MediaReader {
   /// the 3x3 rotation, 3x1 translation, and 1x1 scale) containing translation
   /// and rotation to apply to the board.
   ///
-  Mat _projectBoard({
+  /// Returns the projected board image and its mask
+  ///
+  (Mat, Mat) _projectBoard({
     required Charuco charuco,
     required Camera camera,
     required Vector translation,
@@ -166,11 +165,21 @@ class CharucoMockReader implements MediaReader {
     ]);
 
     // Compute the homography and warp the image
-    final hFinal = hMatrix * sMatrix;
-    return warpPerspective(charuco.boardImage, hFinal.toMat(), (
-      camera.sensorWidth.toInt(),
-      camera.sensorHeight.toInt(),
-    ), borderValue: Scalar(255));
+    final hFinal = (hMatrix * sMatrix).toMat();
+
+    // Prepare the mask
+    final mask = Mat.fromScalar(height, width, MatType.CV_8UC(1), Scalar(0xFF));
+
+    return (
+      warpPerspective(cvtColor(charuco.boardImage, COLOR_GRAY2BGR), hFinal, (
+        camera.sensorWidth.toInt(),
+        camera.sensorHeight.toInt(),
+      )),
+      warpPerspective(mask, hFinal, (
+        camera.sensorWidth.toInt(),
+        camera.sensorHeight.toInt(),
+      )),
+    );
   }
 
   @override

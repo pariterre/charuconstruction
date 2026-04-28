@@ -59,6 +59,32 @@ class WebcamDualCharucos extends DualCharucos {
   MediaReader get mediaReader => _webcamReader;
 
   @override
+  Future<void> connect({
+    List<Charuco>? charucos,
+    Camera? camera,
+    List<FrameAnalyser> analysers = const [],
+  }) async {
+    await _webcamReader.initialize();
+    return await super.connect(
+      charucos: charucos,
+      camera: camera,
+      analysers: analysers,
+    );
+  }
+
+  @override
+  Future<void> startReading() async {
+    await _webcamReader.startReading();
+    return await super.startReading();
+  }
+
+  @override
+  Future<void> stopReading() async {
+    await _webcamReader.stopReading();
+    return await super.stopReading();
+  }
+
+  @override
   Future<void> disconnect() async {
     _webcamReader.dispose();
     return await super.disconnect();
@@ -104,9 +130,9 @@ class MockedDualCharucos extends DualCharucos {
   }
 
   @override
-  Future<void> disconnect() {
+  Future<void> disconnect() async {
     _mediaReader = null;
-    return super.disconnect();
+    return await super.disconnect();
   }
 
   List<(Vector, Matrix)> _generateValue(int value) {
@@ -120,8 +146,8 @@ class MockedDualCharucos extends DualCharucos {
         ]),
         MatrixExtensions.fromEuler([
           (30.0 * sin(0.005 * (3 * value + i * 20)), CharucoAxis.x),
-          // (20 * cos(0.01 * (4 * value + i * 20)), CharucoAxis.y),
-          // (15.0 * sin(0.005 * (5 * value + i * 20)), CharucoAxis.z),
+          (20 * cos(0.01 * (4 * value + i * 20)), CharucoAxis.y),
+          (15.0 * sin(0.005 * (5 * value + i * 20)), CharucoAxis.z),
         ]),
       ));
     }

@@ -31,7 +31,7 @@ AvailableDevices _lastSelectedDevice = AvailableDevices.values.first;
 class _DeviceManagerContainerState extends State<DeviceManagerContainer> {
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return SingleChildScrollView(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

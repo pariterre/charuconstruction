@@ -11,17 +11,16 @@ enum CameraModels {
     };
   }
 
-  Camera toCamera({bool useVideoParameters = false, bool isVertical = false}) {
+  Camera toCamera({bool useVideoParameters = false, bool isPortrait = false}) {
     return switch (this) {
       CameraModels.pixel2 => Camera.fromPhone(
         focalLength: 3.4,
         pixelSize: 0.0014,
         sensorWidth: 4032.0,
-        sensorHeight:
-            3024.0 * 0.75, // TODO Validate why the ratio is applied twice
+        sensorHeight: 3024.0 * 0.75,
         distorsionCoefficients: const [-0.05, 0.02, 0.0, 0.0, 0.0],
         useVideoParameters: useVideoParameters,
-        isVertical: isVertical,
+        isPortrait: isPortrait,
       ),
     };
   }
@@ -29,31 +28,36 @@ enum CameraModels {
 
 class Camera {
   ///
+  /// Whether the camera is in portrait (vertical) orientation or landscape (horizontal) orientation.
+  ///
+  final bool isPortrait;
+
+  ///
   /// Focal length of the camera in pixels.
   ///
-  double focalLength;
+  final double focalLength;
 
   ///
   /// Width of the camera sensor in millimeters.
   ///
-  double sensorWidth;
+  final double sensorWidth;
 
   ///
   /// Height of the camera sensor in millimeters.
   ///
-  double sensorHeight;
+  final double sensorHeight;
 
   ///
   /// Camera matrix (3x3).
   ///
-  List<List<double>> matrix;
+  final List<List<double>> matrix;
   Mat get matrixAsMat => Mat.from2DList(matrix, MatType(MatType.CV_64F));
   Matrix get matrixAsLinalg => Matrix.fromList(matrix);
 
   ///
   /// Distortion coefficients (1x5).
   ///
-  List<double> distorsionCoefficients;
+  final List<double> distorsionCoefficients;
   Mat get distorsionCoefficientsAsMat => Mat.fromList(
     1,
     distorsionCoefficients.length,
@@ -67,7 +71,7 @@ class Camera {
   /// [pixelSize] is the pixel size in centimeters (default is 0.0014 cm, which is 1.4 micrometers).
   /// [useVideoParameters] indicates whether the camera is used as a video camera
   /// (which applies a crop factor to the focal length and sensor size assuming 1080p video).
-  /// [isVertical] indicates whether the camera is in vertical orientation (which swaps the sensor width and height).
+  /// [isPortrait] indicates whether the camera is in portrait (vertical) orientation (which swaps the sensor width and height).
   factory Camera.fromPhone({
     required double focalLength,
     required double pixelSize,
@@ -75,7 +79,7 @@ class Camera {
     required double sensorHeight,
     List<double> distorsionCoefficients = const [0.0, 0.0, 0.0, 0.0, 0.0],
     bool useVideoParameters = false,
-    bool isVertical = false,
+    bool isPortrait = false,
   }) {
     var focalLengthInPixels = focalLength / pixelSize;
 
@@ -89,8 +93,8 @@ class Camera {
       sensorHeight *= videoCropFactor;
     }
 
-    if (isVertical) {
-      // Swap width and height for vertical orientation
+    if (isPortrait) {
+      // Swap width and height for portrait orientation
       final temp = sensorWidth;
       sensorWidth = sensorHeight;
       sensorHeight = temp;
@@ -106,6 +110,7 @@ class Camera {
         sensorHeight,
       ),
       distorsionCoefficients: distorsionCoefficients,
+      isPortrait: isPortrait,
     );
   }
 
@@ -115,6 +120,7 @@ class Camera {
     required this.sensorHeight,
     required this.matrix,
     required this.distorsionCoefficients,
+    required this.isPortrait,
   });
 }
 

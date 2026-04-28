@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
+import 'package:logging/logging.dart';
 import 'package:ml_linalg/linalg.dart';
 import 'package:opencv_dart/opencv.dart';
 
@@ -8,6 +10,8 @@ import 'camera.dart';
 import 'charuco.dart';
 import 'extensions.dart';
 import 'frame.dart';
+
+final _logger = Logger("MediaReader");
 
 abstract class MediaReader {
   ///
@@ -41,16 +45,15 @@ class ImageReader implements MediaReader {
 }
 
 class WebcamReader implements MediaReader {
+  bool _isReading = false;
+  bool get _isInitialized =>
+      webcamController != null && webcamController!.value.isInitialized;
   final List<CameraDescription> _availableCameras = [];
   CameraController? webcamController;
+  final imageBuffer = <CameraImage>[];
 
-  WebcamReader() {
-    _initializeWebcam();
-  }
-
-  Future<void> _initializeWebcam() async {
+  Future<void> initialize() async {
     _availableCameras.addAll(await availableCameras());
-
     if (_availableCameras.isEmpty) {
       throw Exception("No cameras available");
     }
@@ -58,19 +61,56 @@ class WebcamReader implements MediaReader {
     webcamController = CameraController(
       _availableCameras.first,
       ResolutionPreset.high,
+      enableAudio: false,
+      fps: 300,
     );
     await webcamController!.initialize();
   }
 
+  Future<void> startReading() async {
+    if (!_isInitialized) {
+      throw Exception("Webcam not initialized. Call initialize() first.");
+    }
+    if (_isReading) return;
+
+    _isReading = true;
+    await webcamController!.startImageStream(_addToBuffer);
+  }
+
+  Future<void> stopReading() async {
+    if (!_isInitialized) {
+      throw Exception("Webcam not initialized. Call initialize() first.");
+    }
+    if (!_isReading) return;
+    await webcamController!.stopImageStream();
+    _isReading = false;
+  }
+
   @override
   Stream<Frame?> readFrames() async* {
-    if (webcamController == null) yield null;
+    while (!_isInitialized) {
+      await Future.delayed(Duration(milliseconds: 100));
+    }
 
-    while (webcamController != null) {
+    while (_isInitialized) {
       try {
-        final cameraImage = await webcamController!.takePicture();
-        final bytes = await cameraImage.readAsBytes();
-        yield Frame(imdecode(bytes, IMREAD_COLOR));
+        if (imageBuffer.isEmpty) {
+          await Future.delayed(Duration(milliseconds: 10));
+          continue;
+        }
+        final cameraImage = imageBuffer.removeAt(0);
+        final bytes = _toRgb(frame: cameraImage, rotation: 90);
+        if (bytes == null) {
+          yield null;
+          continue;
+        }
+        final frame = Mat.fromList(
+          cameraImage.width,
+          cameraImage.height,
+          MatType.CV_8UC(3),
+          bytes,
+        );
+        yield Frame(frame);
       } catch (e) {
         yield null;
       }
@@ -78,9 +118,40 @@ class WebcamReader implements MediaReader {
     yield null;
   }
 
+  void _addToBuffer(CameraImage bytes) {
+    imageBuffer.add(bytes);
+    if (imageBuffer.length > 10) {
+      _logger.warning(
+        "Image buffer overflow: ${imageBuffer.length} frames. Dropping oldest frame.",
+      );
+      imageBuffer.removeAt(0); // Keep the buffer size manageable
+    }
+  }
+
   @override
-  void dispose() {
-    webcamController?.dispose();
+  void dispose() async {
+    await stopReading();
+    await webcamController?.dispose();
+    webcamController = null;
+  }
+
+  Uint8List? _toRgb({required CameraImage frame, int rotation = 90}) {
+    try {
+      return switch (frame.format.group) {
+        ImageFormatGroup.yuv420 => Uint8ListExtension.fromYUV420(
+          frame,
+          rotation: rotation,
+        ),
+        ImageFormatGroup.bgra8888 => Uint8ListExtension.fromBGRA8888(
+          frame,
+          rotation: rotation,
+        ),
+        _ => throw Exception("Unsupported image format: ${frame.format.group}"),
+      };
+    } catch (e) {
+      _logger.severe("Error converting camera image to RGB: $e");
+      return null;
+    }
   }
 }
 
@@ -204,4 +275,142 @@ class CharucoMockReader implements MediaReader {
 
   @override
   void dispose() {}
+}
+
+extension Uint8ListExtension on Uint8List {
+  // CameraImage BGRA8888 -> PNG
+  // Color
+  static Uint8List fromBGRA8888(CameraImage image, {int rotation = 0}) {
+    final plane = image.planes[0];
+
+    final width = image.width;
+    final height = image.height;
+    final bytes = plane.bytes;
+    final bytesPerRow = plane.bytesPerRow;
+
+    late Uint8List out;
+    late int outWidth;
+    late int outHeight;
+
+    if (rotation == 90 || rotation == 270) {
+      outWidth = height;
+      outHeight = width;
+    } else {
+      outWidth = width;
+      outHeight = height;
+    }
+
+    out = Uint8List(outWidth * outHeight * 3);
+
+    for (int y = 0; y < height; y++) {
+      final rowStart = y * bytesPerRow;
+
+      for (int x = 0; x < width; x++) {
+        final i = rowStart + x * 4;
+
+        final b = bytes[i];
+        final g = bytes[i + 1];
+        final r = bytes[i + 2];
+
+        int newX, newY;
+
+        switch (rotation) {
+          case 90:
+            newX = height - y - 1;
+            newY = x;
+            break;
+          case 270:
+            newX = y;
+            newY = width - x - 1;
+            break;
+          case 180:
+            newX = width - x - 1;
+            newY = height - y - 1;
+            break;
+          default:
+            newX = x;
+            newY = y;
+        }
+
+        final outIndex = (newY * outWidth + newX) * 3;
+
+        out[outIndex] = b;
+        out[outIndex + 1] = g;
+        out[outIndex + 2] = r;
+      }
+    }
+
+    return out;
+  }
+
+  // CameraImage YUV420_888 -> PNG -> Image (compresion:0, filter: none)
+  // Black
+  static Uint8List fromYUV420(CameraImage image, {int rotation = 90}) {
+    final width = image.width;
+    final height = image.height;
+
+    final outWidth = (rotation == 90 || rotation == 270) ? height : width;
+    final outHeight = (rotation == 90 || rotation == 270) ? width : height;
+
+    final yPlane = image.planes[0];
+    final uPlane = image.planes[1];
+    final vPlane = image.planes[2];
+
+    final yBuffer = yPlane.bytes;
+    final uBuffer = uPlane.bytes;
+    final vBuffer = vPlane.bytes;
+
+    final rgb = Uint8List(outWidth * outHeight * 3);
+
+    final uvRowStride = uPlane.bytesPerRow;
+    final uvPixelStride = uPlane.bytesPerPixel!;
+
+    for (int y = 0; y < height; y++) {
+      for (int x = 0; x < width; x++) {
+        final yIndex = y * yPlane.bytesPerRow + x;
+        final uvIndex = (y ~/ 2) * uvRowStride + (x ~/ 2) * uvPixelStride;
+
+        final Y = yBuffer[yIndex];
+        final U = uBuffer[uvIndex];
+        final V = vBuffer[uvIndex];
+
+        int R = (Y + 1.402 * (V - 128)).round();
+        int G = (Y - 0.344136 * (U - 128) - 0.714136 * (V - 128)).round();
+        int B = (Y + 1.772 * (U - 128)).round();
+
+        R = R.clamp(0, 255);
+        G = G.clamp(0, 255);
+        B = B.clamp(0, 255);
+
+        int newX, newY;
+
+        switch (rotation) {
+          case 90:
+            newX = height - y - 1;
+            newY = x;
+            break;
+          case 180:
+            newX = width - x - 1;
+            newY = height - y - 1;
+            break;
+          case 270:
+            newX = y;
+            newY = width - x - 1;
+            break;
+          default:
+            newX = x;
+            newY = y;
+        }
+
+        // Use outWidth instead of width
+        final newIndex = (newY * outWidth + newX) * 3;
+
+        rgb[newIndex] = R;
+        rgb[newIndex + 1] = G;
+        rgb[newIndex + 2] = B;
+      }
+    }
+
+    return rgb;
+  }
 }

@@ -24,96 +24,101 @@ class _B24ManagementContainerState extends State<B24ManagementContainer> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 20.0, bottom: 20.0),
-          child: ElevatedButton(
-            onPressed: _isBusy ? null : _scan,
-            child: Text('Scan for B24 Sensor'),
+    return Center(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 20.0, bottom: 20.0),
+            child: ElevatedButton(
+              onPressed: _isBusy ? null : _scan,
+              child: Text('Scan for B24 Sensor'),
+            ),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 20.0),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ElevatedButton(
-                onPressed:
-                    _isBusy || (_pinNumber ?? -1) < 0 || _device.isConnected
-                    ? null
-                    : _connect,
-                child: Text('Connect'),
-              ),
-              SizedBox(width: 20),
-              SizedBox(
-                width: 100,
-                child: TextField(
-                  decoration: InputDecoration(labelText: 'Pin Number'),
-                  keyboardType: TextInputType.number,
-                  enabled:
-                      !_isBusy && _device.deviceFound && !_device.isConnected,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  onChanged: (value) {
-                    _pinNumber = int.tryParse(value);
+          Padding(
+            padding: const EdgeInsets.only(bottom: 20.0),
+            child: SizedBox(
+              width: 100,
+              child: TextField(
+                decoration: InputDecoration(labelText: 'Pin Number'),
+                keyboardType: TextInputType.number,
+                enabled:
+                    !_isBusy && _device.deviceFound && !_device.isConnected,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                onChanged: (value) {
+                  _pinNumber = int.tryParse(value);
 
-                    _errorMessage = (_pinNumber ?? 0) < 0
-                        ? 'Invalid pin number'
-                        : null;
-                    setState(() {});
-                  },
+                  _errorMessage = (_pinNumber ?? 0) < 0
+                      ? 'Invalid pin number'
+                      : null;
+                  setState(() {});
+                },
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 20.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ElevatedButton(
+                  onPressed:
+                      _isBusy || (_pinNumber ?? -1) < 0 || _device.isConnected
+                      ? null
+                      : _connect,
+                  child: Text('Connect'),
                 ),
-              ),
-              SizedBox(width: 20),
-              ElevatedButton(
-                onPressed: _isBusy || _device.isNotConnected
-                    ? null
-                    : _disconnect,
-                child: Text('Disconnect'),
-              ),
-            ],
+                SizedBox(width: 20),
+                ElevatedButton(
+                  onPressed: _isBusy || _device.isNotConnected
+                      ? null
+                      : _disconnect,
+                  child: Text('Disconnect'),
+                ),
+              ],
+            ),
           ),
-        ),
 
-        Padding(
-          padding: const EdgeInsets.only(bottom: 20.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Status: ${_device.isConnected ? 'Connected' : 'Not Connected'} and ${_device.isReading ? 'Reading' : 'Not Reading'}',
-              ),
-              if (_statusMessage != null) Text(_statusMessage!),
-              if (_errorMessage != null)
-                Text(_errorMessage!, style: TextStyle(color: Colors.red)),
-            ],
+          Padding(
+            padding: const EdgeInsets.only(bottom: 20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Status: ${_device.isConnected ? 'Connected' : 'Not Connected'} and ${_device.isReading ? 'Reading' : 'Not Reading'}',
+                ),
+                if (_statusMessage != null) Text(_statusMessage!),
+                if (_errorMessage != null)
+                  Text(_errorMessage!, style: TextStyle(color: Colors.red)),
+              ],
+            ),
           ),
-        ),
 
-        Padding(
-          padding: const EdgeInsets.only(bottom: 20.0),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ElevatedButton(
-                onPressed:
-                    _isBusy || _device.isNotConnected || _device.isReading
-                    ? null
-                    : _startReading,
-                child: Text('Start Reading'),
-              ),
-              SizedBox(width: 20),
-              ElevatedButton(
-                onPressed:
-                    _isBusy || _device.isNotConnected || _device.isNotReading
-                    ? null
-                    : _stopReading,
-                child: Text('Stop Reading'),
-              ),
-            ],
+          Padding(
+            padding: const EdgeInsets.only(bottom: 20.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ElevatedButton(
+                  onPressed:
+                      _isBusy || _device.isNotConnected || _device.isReading
+                      ? null
+                      : _startReading,
+                  child: Text('Start Reading'),
+                ),
+                SizedBox(width: 20),
+                ElevatedButton(
+                  onPressed:
+                      _isBusy || _device.isNotConnected || _device.isNotReading
+                      ? null
+                      : _stopReading,
+                  child: Text('Stop Reading'),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

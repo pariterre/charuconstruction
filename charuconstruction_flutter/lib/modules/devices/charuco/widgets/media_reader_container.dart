@@ -29,13 +29,9 @@ class _MediaReaderContainerState extends State<MediaReaderContainer> {
       builder: (context, snapshot) {
         return FittedBox(
           fit: BoxFit.contain,
-          child: SizedBox(
-            width: 1920,
-            height: 1080,
-            child: _MediaReaderStream(
-              analyser: widget.analyser,
-              frame: snapshot.data,
-            ),
+          child: _MediaReaderStream(
+            analyser: widget.analyser,
+            frame: snapshot.data,
           ),
         );
       },

@@ -40,6 +40,8 @@ class _WebcamDualCharucosManagementContainerState
   CameraModels _selectedCamera = CameraModels.pixel2;
   late final Set<AvailableFrameAnalysers> _selectedFrameAnalyser;
 
+  bool _showReconstructedCharucosOnFrame = true;
+
   @override
   void initState() {
     super.initState();
@@ -78,6 +80,15 @@ class _WebcamDualCharucosManagementContainerState
               );
             }
           }).toSet();
+
+    final reconstructAnalyser =
+        analyzers?.firstWhereOrNull(
+              (analyser) => analyser is ReconstructCharucoFrameAnalyser,
+            )
+            as ReconstructCharucoFrameAnalyser?;
+    if (reconstructAnalyser != null) {
+      _showReconstructedCharucosOnFrame = reconstructAnalyser.showOnFrame;
+    }
 
     _selectedCharucos.addAll(
       isFirst
@@ -181,6 +192,24 @@ class _WebcamDualCharucosManagementContainerState
               ),
             );
           }),
+
+          SizedBox(height: 20),
+          if (_selectedFrameAnalyser.contains(
+            AvailableFrameAnalysers.reconstructCharuco,
+          ))
+            SizedBox(
+              width: 400,
+              child: CheckboxListTile(
+                title: Text('Show reconstructed charucos on the frame'),
+                value: _showReconstructedCharucosOnFrame,
+                enabled: _device.isNotConnected,
+                onChanged: (value) {
+                  setState(() {
+                    _showReconstructedCharucosOnFrame = value!;
+                  });
+                },
+              ),
+            ),
 
           SizedBox(height: 20),
           if (_selectedFrameAnalyser.contains(
@@ -291,6 +320,7 @@ class _WebcamDualCharucosManagementContainerState
           charucoBoards: charucos,
           camera: camera,
           ignoreReconstructionError: true,
+          showOnFrame: _showReconstructedCharucosOnFrame,
         ),
       if (_selectedFrameAnalyser.contains(AvailableFrameAnalysers.videoSaver))
         VideoSaverAnalyser(outputPath: _videoOutputPath),

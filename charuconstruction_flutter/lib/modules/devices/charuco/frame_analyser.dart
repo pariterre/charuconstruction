@@ -57,9 +57,9 @@ class ReconstructCharucoFrameAnalyser extends FrameAnalyser {
       return (null, extraAnalyses);
     }
 
-    final results = <Charuco, (Vector?, Matrix?)?>{};
+    final matResults = <Charuco, (Mat?, Mat?)?>{};
     for (var charuco in charucoBoards) {
-      results[charuco] =
+      matResults[charuco] =
           (await charuco.detect(
             frame: frame,
             camera: camera,
@@ -70,8 +70,8 @@ class ReconstructCharucoFrameAnalyser extends FrameAnalyser {
 
     // Show the estimated pose for each board on the current frame
     if (showOnFrame) {
-      for (final charuco in results.keys) {
-        final (translation, rotation) = results[charuco] ?? (null, null);
+      for (final charuco in matResults.keys) {
+        final (translation, rotation) = matResults[charuco] ?? (null, null);
         if (translation == null || rotation == null) {
           continue;
         }
@@ -80,14 +80,28 @@ class ReconstructCharucoFrameAnalyser extends FrameAnalyser {
           frame.get(),
           camera.matrixAsMat,
           camera.distorsionCoefficientsAsMat,
-          rotation.toMat(),
-          translation.toMat(),
+          rotation,
+          translation,
           0.1,
         );
       }
     }
 
     extraAnalyses ??= {};
+    // Convert results to Vector and Matrix
+    final results = <Charuco, (Vector?, Matrix?)?>{};
+    for (final charuco in matResults.keys) {
+      final (translationMat, rotationMat) = matResults[charuco] ?? (null, null);
+      if (translationMat == null || rotationMat == null) {
+        results[charuco] = (null, null);
+        continue;
+      }
+      // If we get here, the charuco is properly recognized
+      final Vector translationVector = translationMat.toVector();
+      final rodrigues = Rodrigues(rotationMat);
+      final Matrix rotationVector = rodrigues.toMatrix();
+      results[charuco] = (translationVector, rotationVector);
+    }
     extraAnalyses[AvailableExtraAnalyses.charucosReconstruction] = results;
 
     return (frame, extraAnalyses);

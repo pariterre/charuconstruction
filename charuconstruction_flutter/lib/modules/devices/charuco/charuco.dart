@@ -3,12 +3,10 @@ import 'dart:io';
 import 'package:charuconstruction_flutter/utils/math.dart';
 import 'package:charuconstruction_flutter/utils/misc.dart';
 import 'package:dartcv4/dartcv.dart';
-import 'package:ml_linalg/linalg.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'camera.dart';
 import 'charuco_resolution.dart';
-import 'extensions.dart';
 import 'frame.dart';
 
 class Charuco {
@@ -189,10 +187,10 @@ class Charuco {
   ///
   /// Returns the translation and rotation (rodriguez representation) vectors of the
   /// charuco board in the camera frame, or null if the detection fails.
-  Future<(Vector, Matrix)?> detect({
+  Future<(Mat, Mat)?> detect({
     required Frame frame,
     required Camera camera,
-    (Vector translation, Matrix rotation)? initialGuess,
+    (Mat translationMat, Mat rotationMat)? initialGuess,
     bool ignoreReconstructionError = false,
   }) async {
     final (charucoCorners, charucoIds) =
@@ -200,8 +198,8 @@ class Charuco {
     if (charucoCorners == null || charucoIds == null) return null;
 
     // Initial guesses
-    final translationInitialGuess = initialGuess?.$1.toMat();
-    final rotationInitialGuess = initialGuess?.$2.toMat();
+    final translationInitialGuess = initialGuess?.$1;
+    final rotationInitialGuess = initialGuess?.$2;
 
     final (isSuccess, rotation, translation) = estimatePoseCharucoBoard(
       charucoCorners,
@@ -245,11 +243,7 @@ class Charuco {
       if (errorNormSquared > 5 * 5) return null;
     }
 
-    // If we get here, the charuco is properly recognized
-    final Vector translationVector = translation.toVector();
-    final rodrigues = Rodrigues(rotation);
-    final Matrix rotationVector = rodrigues.toMatrix();
-    return (translationVector, rotationVector);
+    return (translation, rotation);
   }
 
   ///

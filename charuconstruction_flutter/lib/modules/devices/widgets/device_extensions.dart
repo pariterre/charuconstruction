@@ -13,7 +13,12 @@ extension DeviceExtensions on Device {
   Widget deviceDataContainer({required Device device}) {
     return switch (device) {
       B24ForceSensor b24 => DeviceDataContainer(device: b24),
-      WebcamCharucos dualCharucos => CameraFrameContainer(device: dualCharucos),
+      WebcamCharucos dualCharucos => Column(
+        children: [
+          DeviceDataContainer(device: dualCharucos),
+          CameraFrameContainer(device: dualCharucos),
+        ],
+      ),
       _ => Text('No data available for this device'),
     };
   }

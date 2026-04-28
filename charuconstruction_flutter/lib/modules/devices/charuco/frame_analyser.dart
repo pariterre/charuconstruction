@@ -38,11 +38,13 @@ class ReconstructCharucoFrameAnalyser extends FrameAnalyser {
   final List<Charuco> charucoBoards;
   final Camera camera;
   final bool ignoreReconstructionError;
+  final bool showOnFrame;
 
   ReconstructCharucoFrameAnalyser({
     required this.charucoBoards,
     required this.camera,
     this.ignoreReconstructionError = false,
+    this.showOnFrame = true,
   });
 
   @override
@@ -67,20 +69,22 @@ class ReconstructCharucoFrameAnalyser extends FrameAnalyser {
     }
 
     // Show the estimated pose for each board on the current frame
-    for (final charuco in results.keys) {
-      final (translation, rotation) = results[charuco] ?? (null, null);
-      if (translation == null || rotation == null) {
-        continue;
-      }
+    if (showOnFrame) {
+      for (final charuco in results.keys) {
+        final (translation, rotation) = results[charuco] ?? (null, null);
+        if (translation == null || rotation == null) {
+          continue;
+        }
 
-      drawFrameAxes(
-        frame.get(),
-        camera.matrixAsMat,
-        camera.distorsionCoefficientsAsMat,
-        rotation.toMat(),
-        translation.toMat(),
-        0.1,
-      );
+        drawFrameAxes(
+          frame.get(),
+          camera.matrixAsMat,
+          camera.distorsionCoefficientsAsMat,
+          rotation.toMat(),
+          translation.toMat(),
+          0.1,
+        );
+      }
     }
 
     extraAnalyses ??= {};

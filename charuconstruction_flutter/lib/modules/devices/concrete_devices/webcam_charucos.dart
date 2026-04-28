@@ -37,6 +37,9 @@ class WebcamDualCharucos extends WebcamCharucos {
   MediaReader? get mediaReader => _webcamReader;
 
   @override
+  int get channelCount => 3; // Eulers angles between the two charucos
+
+  @override
   Future<void> connect({
     List<Charuco>? charucos,
     Camera? camera,

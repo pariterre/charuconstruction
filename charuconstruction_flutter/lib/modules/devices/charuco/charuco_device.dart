@@ -27,7 +27,7 @@ class CharucoDevice extends Device {
   String? get name => 'Charuco Device';
 
   @override
-  int get channelCount => 9 * _charucos.length;
+  int get channelCount => 0;
 
   @override
   Future<void> connect({List<Charuco>? charucos, Camera? camera}) async {

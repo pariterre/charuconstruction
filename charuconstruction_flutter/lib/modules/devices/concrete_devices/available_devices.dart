@@ -1,7 +1,7 @@
-import 'b24_force_sensor.dart';
-import 'dual_charucos.dart';
 import '../device.dart';
 import '../providers/devices_provider.dart';
+import 'b24_force_sensor.dart';
+import 'webcam_charucos.dart';
 
 enum AvailableDevices {
   b24,

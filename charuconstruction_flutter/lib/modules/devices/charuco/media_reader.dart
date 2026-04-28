@@ -21,10 +21,25 @@ abstract class MediaReader {
   Stream<Frame?> readFrames();
 
   ///
+  /// Any initialization that needs to be done before reading frames
+  ///
+  Future<void> initialize();
+
+  ///
+  /// Start reading frames from the media source.
+  ///
+  Future<void> startReading();
+
+  ///
+  /// Stop reading frames from the media source.
+  ///
+  Future<void> stopReading();
+
+  ///
   /// Dispose of any resources used by the media reader. This should be called
   /// when the reader is no longer needed to free up memory.
   ///
-  void dispose();
+  Future<void> dispose();
 }
 
 class ImageReader implements MediaReader {
@@ -33,13 +48,22 @@ class ImageReader implements MediaReader {
   ImageReader({required String imagePath}) : frame = Frame(imread(imagePath));
 
   @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<void> startReading() async {}
+
+  @override
+  Future<void> stopReading() async {}
+
+  @override
   Stream<Frame?> readFrames() async* {
     yield frame;
     // Terminate the stream after yielding that single frame
   }
 
   @override
-  void dispose() {
+  Future<void> dispose() async {
     frame.dispose();
   }
 }
@@ -52,6 +76,7 @@ class WebcamReader implements MediaReader {
   CameraController? webcamController;
   final imageBuffer = <CameraImage>[];
 
+  @override
   Future<void> initialize() async {
     _availableCameras.addAll(await availableCameras());
     if (_availableCameras.isEmpty) {
@@ -67,6 +92,7 @@ class WebcamReader implements MediaReader {
     await webcamController!.initialize();
   }
 
+  @override
   Future<void> startReading() async {
     if (!_isInitialized) {
       throw Exception("Webcam not initialized. Call initialize() first.");
@@ -77,6 +103,7 @@ class WebcamReader implements MediaReader {
     await webcamController!.startImageStream(_addToBuffer);
   }
 
+  @override
   Future<void> stopReading() async {
     if (!_isInitialized) {
       throw Exception("Webcam not initialized. Call initialize() first.");
@@ -129,7 +156,7 @@ class WebcamReader implements MediaReader {
   }
 
   @override
-  void dispose() async {
+  Future<void> dispose() async {
     await stopReading();
     await webcamController?.dispose();
     webcamController = null;
@@ -168,6 +195,7 @@ class CharucoMockReader implements MediaReader {
   /// Therefore each inner list should have the same length as the number of Charuco boards.
   ///
   final Stream<List<(Vector, Matrix)>> transformations;
+  StreamSubscription? _transformationSubscription;
 
   ///
   /// The camera parameters to use for projecting the Charuco boards in the mock frames.
@@ -182,39 +210,61 @@ class CharucoMockReader implements MediaReader {
   });
 
   @override
-  Stream<Frame?> readFrames() async* {
-    // Move the board further away and rotate the boards and get their images
-    await for (final frameTransformations in transformations) {
-      // First create a white background which corresponds to a distant wall
-      Mat frame = Mat.fromScalar(
-        camera.sensorHeight.toInt(),
-        camera.sensorWidth.toInt(),
-        MatType.CV_8UC(3),
-        Scalar(0xFF / 2, 0xFF / 2, 0xFF / 2),
-      );
+  Future<void> initialize() async {
+    print('yo');
+  }
 
-      for (final (charucoTransformation) in frameTransformations) {
-        final translation = charucoTransformation.$1;
-        final rotation = charucoTransformation.$2;
-        final board =
-            charucos[frameTransformations.indexOf(charucoTransformation)];
-        final (projectedBoard, mask) = _projectBoard(
-          charuco: board,
-          camera: camera,
-          translation: translation,
-          rotation: rotation,
+  @override
+  Future<void> startReading() async {
+    print('yo2');
+  }
+
+  @override
+  Future<void> stopReading() async {
+    await _transformationSubscription?.cancel();
+    _transformationSubscription = null;
+  }
+
+  @override
+  Stream<Frame?> readFrames() async* {
+    final controller = StreamController<Frame?>();
+
+    // Move the board further away and rotate the boards and get their images
+    _transformationSubscription = transformations.listen(
+      (frameTransformations) {
+        // First create a white background which corresponds to a distant wall
+        Mat frame = Mat.fromScalar(
+          camera.sensorHeight.toInt(),
+          camera.sensorWidth.toInt(),
+          MatType.CV_8UC(3),
+          Scalar(0xFF / 2, 0xFF / 2, 0xFF / 2),
         );
 
-        projectedBoard.copyTo(frame, mask: mask);
-      }
+        for (final (charucoTransformation) in frameTransformations) {
+          final translation = charucoTransformation.$1;
+          final rotation = charucoTransformation.$2;
+          final board =
+              charucos[frameTransformations.indexOf(charucoTransformation)];
+          final (projectedBoard, mask) = _projectBoard(
+            charuco: board,
+            camera: camera,
+            translation: translation,
+            rotation: rotation,
+          );
 
-      // Encode and decode to get a proper Frame object
-      final (isSuccess, buf) = imencode(".png", frame);
-      if (!isSuccess) break;
-      yield Frame(imdecode(buf, IMREAD_COLOR));
-    }
+          projectedBoard.copyTo(frame, mask: mask);
+        }
 
-    yield null;
+        // Encode and decode to get a proper Frame object
+        final (isSuccess, buf) = imencode(".png", frame);
+        controller.add(isSuccess ? Frame(imdecode(buf, IMREAD_COLOR)) : null);
+      },
+
+      onError: controller.addError,
+      onDone: controller.close,
+    );
+
+    yield* controller.stream;
   }
 
   ///
@@ -274,7 +324,7 @@ class CharucoMockReader implements MediaReader {
   }
 
   @override
-  void dispose() {}
+  Future<void> dispose() async {}
 }
 
 extension Uint8ListExtension on Uint8List {

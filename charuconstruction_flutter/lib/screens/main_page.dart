@@ -46,10 +46,7 @@ class _MainPageState extends State<MainPage> {
               ...DevicesProvider.instance.connectedDevices.map(
                 (device) => Padding(
                   padding: const EdgeInsets.only(top: 20.0),
-                  child: device.deviceDataContainer(
-                    key: ValueKey(device),
-                    device: device,
-                  ),
+                  child: device.deviceDataContainer(device: device),
                 ),
               ),
             ],

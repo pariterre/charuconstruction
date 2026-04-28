@@ -17,7 +17,7 @@ enum AvailableDualCharucos {
   static AvailableDualCharucos charucoToConstruct =
       AvailableDualCharucos.dualCharucosFromDevice;
 
-  static DualCharucos factory() {
+  static WebcamCharucos factory() {
     return switch (charucoToConstruct) {
       AvailableDualCharucos.dualCharucosFromDevice => WebcamDualCharucos(),
       AvailableDualCharucos.dualCharucosMocker => MockedDualCharucos(),
@@ -25,18 +25,11 @@ enum AvailableDualCharucos {
   }
 }
 
-abstract class DualCharucos extends CharucoDevice {
+class WebcamDualCharucos extends WebcamCharucos {
+  MediaReader? _webcamReader;
+
   @override
-  String get name => "Dual Charucos";
-
-  ///
-  /// The [MediaReader] associated with this device. Will be initialized when the device is connected.
-  MediaReader get mediaReader;
-
-  ///
-  /// The [FrameAnalyser] associated with this device. Will be initialized when the device is connected.
-  FrameAnalyser? _analysers;
-  FrameAnalyser? get analysers => _analysers;
+  MediaReader? get mediaReader => _webcamReader;
 
   @override
   Future<void> connect({
@@ -44,27 +37,9 @@ abstract class DualCharucos extends CharucoDevice {
     Camera? camera,
     List<FrameAnalyser> analysers = const [],
   }) async {
-    final output = await super.connect(charucos: charucos, camera: camera);
+    _webcamReader = WebcamReader();
 
-    _analysers = FrameAnalyserPipeline(analysers: analysers);
-
-    return output;
-  }
-}
-
-class WebcamDualCharucos extends DualCharucos {
-  late final WebcamReader _webcamReader = WebcamReader();
-
-  @override
-  MediaReader get mediaReader => _webcamReader;
-
-  @override
-  Future<void> connect({
-    List<Charuco>? charucos,
-    Camera? camera,
-    List<FrameAnalyser> analysers = const [],
-  }) async {
-    await _webcamReader.initialize();
+    await _webcamReader!.initialize();
     return await super.connect(
       charucos: charucos,
       camera: camera,
@@ -73,29 +48,13 @@ class WebcamDualCharucos extends DualCharucos {
   }
 
   @override
-  Future<void> startReading() async {
-    await _webcamReader.startReading();
-    return await super.startReading();
-  }
-
-  @override
-  Future<void> stopReading() async {
-    await _webcamReader.stopReading();
-    return await super.stopReading();
-  }
-
-  @override
   Future<void> disconnect() async {
-    _webcamReader.dispose();
+    _webcamReader = null;
     return await super.disconnect();
   }
 }
 
-class MockedDualCharucos extends DualCharucos {
-  MediaReader? _mediaReader;
-  @override
-  MediaReader get mediaReader => _mediaReader!;
-
+class MockedDualCharucos extends WebcamDualCharucos {
   @override
   Future<void> connect({
     List<Charuco>? charucos,
@@ -113,7 +72,13 @@ class MockedDualCharucos extends DualCharucos {
       );
     }
 
-    _mediaReader = CharucoMockReader(
+    final output = await super.connect(
+      charucos: charucos,
+      camera: camera,
+      analysers: analysers,
+    );
+
+    _webcamReader = CharucoMockReader(
       camera: camera,
       charucos: charucos,
       transformations: Stream.periodic(
@@ -121,17 +86,12 @@ class MockedDualCharucos extends DualCharucos {
         _generateValue,
       ),
     );
-
-    return await super.connect(
-      charucos: charucos,
-      camera: camera,
-      analysers: analysers,
-    );
+    return output;
   }
 
   @override
   Future<void> disconnect() async {
-    _mediaReader = null;
+    _webcamReader = null;
     return await super.disconnect();
   }
 

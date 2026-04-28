@@ -8,7 +8,7 @@ import '../charuco/camera.dart';
 import '../charuco/charuco.dart';
 import '../charuco/frame_analyser.dart';
 import '../concrete_devices/available_devices.dart';
-import '../concrete_devices/dual_charucos.dart';
+import '../concrete_devices/webcam_charucos.dart';
 import '../device_exceptions.dart';
 import '../providers/devices_provider.dart';
 
@@ -18,16 +18,16 @@ String _charucoNameFromPath(String path) =>
         .firstWhereOrNull((segment) => segment.startsWith('charuco_')) ??
     'Unknown Charuco';
 
-class DualCharucosManagementContainer extends StatefulWidget {
-  const DualCharucosManagementContainer({super.key});
+class WebcamDualCharucosManagementContainer extends StatefulWidget {
+  const WebcamDualCharucosManagementContainer({super.key});
 
   @override
-  State<DualCharucosManagementContainer> createState() =>
-      _DualCharucosManagementContainerState();
+  State<WebcamDualCharucosManagementContainer> createState() =>
+      _WebcamDualCharucosManagementContainerState();
 }
 
-class _DualCharucosManagementContainerState
-    extends State<DualCharucosManagementContainer> {
+class _WebcamDualCharucosManagementContainerState
+    extends State<WebcamDualCharucosManagementContainer> {
   bool _isBusy = false;
 
   String? _statusMessage;
@@ -109,141 +109,145 @@ class _DualCharucosManagementContainerState
       return Center(child: CircularProgressIndicator());
     }
 
-    return Column(
-      children: [
-        SizedBox(height: 20),
-        Text('Select the Charuco boards you want to use'),
-        ..._availableCharucos.map((charucoPath) {
-          final charucoName = _charucoNameFromPath(charucoPath);
+    return Center(
+      child: Column(
+        children: [
+          SizedBox(height: 20),
+          Text('Select the Charuco boards you want to use'),
+          ..._availableCharucos.map((charucoPath) {
+            final charucoName = _charucoNameFromPath(charucoPath);
 
-          return SizedBox(
-            width: 400,
-            child: CheckboxListTile(
-              title: Text(charucoName),
-              value: _selectedCharucos.contains(charucoPath),
-              enabled: _device.isNotConnected,
-              onChanged: (value) {
-                setState(() {
-                  if (value!) {
-                    _selectedCharucos.add(charucoPath);
-                  } else {
-                    _selectedCharucos.remove(charucoPath);
-                  }
-                });
-              },
+            return SizedBox(
+              width: 400,
+              child: CheckboxListTile(
+                title: Text(charucoName),
+                value: _selectedCharucos.contains(charucoPath),
+                enabled: _device.isNotConnected,
+                onChanged: (value) {
+                  setState(() {
+                    if (value!) {
+                      _selectedCharucos.add(charucoPath);
+                    } else {
+                      _selectedCharucos.remove(charucoPath);
+                    }
+                  });
+                },
+              ),
+            );
+          }),
+
+          SizedBox(height: 20),
+          Text('Select the camera'),
+          RadioGroup(
+            groupValue: _selectedCamera,
+            onChanged: (value) {
+              setState(() {
+                _selectedCamera = value!;
+              });
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: CameraModels.values.map((camera) {
+                return SizedBox(
+                  width: 400,
+                  child: RadioListTile<CameraModels>(
+                    title: Text(camera.toString()),
+                    enabled: _device.isNotConnected,
+                    value: camera,
+                  ),
+                );
+              }).toList(),
             ),
-          );
-        }),
+          ),
 
-        SizedBox(height: 20),
-        Text('Select the camera'),
-        RadioGroup(
-          groupValue: _selectedCamera,
-          onChanged: (value) {
-            setState(() {
-              _selectedCamera = value!;
-            });
-          },
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: CameraModels.values.map((camera) {
-              return SizedBox(
-                width: 400,
-                child: RadioListTile<CameraModels>(
-                  title: Text(camera.toString()),
-                  enabled: _device.isNotConnected,
-                  value: camera,
+          SizedBox(height: 20),
+          Text('Select the analysers you want to apply to the Charucos feed'),
+          ...AvailableFrameAnalysers.values.map((analyser) {
+            return SizedBox(
+              width: 400,
+              child: CheckboxListTile(
+                title: Text(analyser.toString()),
+                value: _selectedFrameAnalyser.contains(analyser),
+                enabled: _device.isNotConnected,
+                onChanged: (value) {
+                  setState(() {
+                    if (value!) {
+                      _selectedFrameAnalyser.add(analyser);
+                    } else {
+                      _selectedFrameAnalyser.remove(analyser);
+                    }
+                  });
+                },
+              ),
+            );
+          }),
+
+          SizedBox(height: 20),
+          if (_selectedFrameAnalyser.contains(
+            AvailableFrameAnalysers.videoSaver,
+          ))
+            SizedBox(
+              width: 400,
+              child: TextField(
+                enabled: _device.isNotConnected,
+                decoration: InputDecoration(
+                  labelText: 'Video output path',
+                  hintText:
+                      'Enter the path to save the video output (e.g. output.mp4)',
+                  border: OutlineInputBorder(),
                 ),
-              );
-            }).toList(),
-          ),
-        ),
-
-        SizedBox(height: 20),
-        Text('Select the analysers you want to apply to the Charucos feed'),
-        ...AvailableFrameAnalysers.values.map((analyser) {
-          return SizedBox(
-            width: 400,
-            child: CheckboxListTile(
-              title: Text(analyser.toString()),
-              value: _selectedFrameAnalyser.contains(analyser),
-              enabled: _device.isNotConnected,
-              onChanged: (value) {
-                setState(() {
-                  if (value!) {
-                    _selectedFrameAnalyser.add(analyser);
-                  } else {
-                    _selectedFrameAnalyser.remove(analyser);
-                  }
-                });
-              },
-            ),
-          );
-        }),
-
-        SizedBox(height: 20),
-        if (_selectedFrameAnalyser.contains(AvailableFrameAnalysers.videoSaver))
-          SizedBox(
-            width: 400,
-            child: TextField(
-              enabled: _device.isNotConnected,
-              decoration: InputDecoration(
-                labelText: 'Video output path',
-                hintText:
-                    'Enter the path to save the video output (e.g. output.mp4)',
-                border: OutlineInputBorder(),
+                onChanged: (value) {
+                  setState(() {
+                    _videoOutputPath = value;
+                  });
+                },
               ),
-              onChanged: (value) {
-                setState(() {
-                  _videoOutputPath = value;
-                });
-              },
+            ),
+          SizedBox(height: 20),
+
+          Padding(
+            padding: const EdgeInsets.only(bottom: 20.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(width: 20),
+                ElevatedButton(
+                  onPressed: _isBusy || _device.isConnected ? null : _connect,
+                  child: Text('Connect'),
+                ),
+                SizedBox(width: 20),
+                ElevatedButton(
+                  onPressed: _isBusy || _device.isNotConnected
+                      ? null
+                      : _disconnect,
+                  child: Text('Disconnect'),
+                ),
+              ],
             ),
           ),
-        SizedBox(height: 20),
 
-        Padding(
-          padding: const EdgeInsets.only(bottom: 20.0),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(width: 20),
-              ElevatedButton(
-                onPressed: _isBusy || _device.isConnected ? null : _connect,
-                child: Text('Connect'),
-              ),
-              SizedBox(width: 20),
-              ElevatedButton(
-                onPressed: _isBusy || _device.isNotConnected
-                    ? null
-                    : _disconnect,
-                child: Text('Disconnect'),
-              ),
-            ],
+          Padding(
+            padding: const EdgeInsets.only(bottom: 20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Status: ${_device.isConnected ? 'Connected' : 'Not Connected'} and ${_device.isReading ? 'Reading' : 'Not Reading'}',
+                ),
+                if (_statusMessage != null) Text(_statusMessage!),
+                if (_errorMessage != null)
+                  Text(_errorMessage!, style: TextStyle(color: Colors.red)),
+              ],
+            ),
           ),
-        ),
-
-        Padding(
-          padding: const EdgeInsets.only(bottom: 20.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Status: ${_device.isConnected ? 'Connected' : 'Not Connected'} and ${_device.isReading ? 'Reading' : 'Not Reading'}',
-              ),
-              if (_statusMessage != null) Text(_statusMessage!),
-              if (_errorMessage != null)
-                Text(_errorMessage!, style: TextStyle(color: Colors.red)),
-            ],
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  DualCharucos get _device =>
+  WebcamDualCharucos get _device =>
       DevicesProvider.instance.device(AvailableDevices.dualCharucos)
-          as DualCharucos;
+          as WebcamDualCharucos;
 
   Future<void> _connect() async {
     final charucosFutures = _selectedCharucos.map((path) async {

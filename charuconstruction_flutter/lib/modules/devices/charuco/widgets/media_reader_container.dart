@@ -2,78 +2,47 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import '../charuco_device.dart';
 import '../frame.dart';
-import '../frame_analyser.dart';
-import '../media_reader.dart';
 
-class MediaReaderContainer extends StatefulWidget {
-  const MediaReaderContainer({
-    super.key,
-    required this.mediaReader,
-    required this.analyser,
-  });
-  final MediaReader mediaReader;
-  final FrameAnalyser analyser;
+class CameraFrameContainer extends StatefulWidget {
+  const CameraFrameContainer({super.key, required this.device});
+
+  final WebcamCharucos device;
 
   @override
-  State<MediaReaderContainer> createState() => _MediaReaderContainerState();
+  State<CameraFrameContainer> createState() => _CameraFrameContainerState();
 }
 
-class _MediaReaderContainerState extends State<MediaReaderContainer> {
-  late final Stream<Frame?> _frameStream = widget.mediaReader.readFrames();
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder(
-      stream: _frameStream,
-      builder: (context, snapshot) {
-        return FittedBox(
-          fit: BoxFit.contain,
-          child: _MediaReaderStream(
-            analyser: widget.analyser,
-            frame: snapshot.data,
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _MediaReaderStream extends StatefulWidget {
-  const _MediaReaderStream({required this.analyser, required this.frame});
-
-  final FrameAnalyser analyser;
-  final Frame? frame;
-
-  @override
-  State<_MediaReaderStream> createState() => _MediaReaderStreamState();
-}
-
-class _MediaReaderStreamState extends State<_MediaReaderStream> {
+class _CameraFrameContainerState extends State<CameraFrameContainer> {
   Uint8List? _lastFrameBytes;
 
-  Future<void> _processFrame(Frame? frame) async {
-    final processedFrame = await widget.analyser.perform(frame);
-
-    final bytes = processedFrame?.toBytes();
-    if (bytes != null) {
-      setState(() {
-        _lastFrameBytes = bytes;
-      });
-    }
+  @override
+  void initState() {
+    widget.device.onNewFrame.listen(_onNewFrame);
+    super.initState();
   }
 
   @override
-  void didUpdateWidget(covariant _MediaReaderStream oldWidget) {
-    // A new frame has arrived
-    _processFrame(widget.frame);
-    super.didUpdateWidget(oldWidget);
+  void dispose() {
+    widget.device.onNewFrame.cancel(_onNewFrame);
+    super.dispose();
+  }
+
+  void _onNewFrame(Frame? frame) {
+    if (!mounted) return;
+    setState(() {
+      _lastFrameBytes = frame?.toBytes();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return _lastFrameBytes == null
-        ? const Center(child: CircularProgressIndicator())
-        : Image.memory(_lastFrameBytes!, gaplessPlayback: true);
+    return FittedBox(
+      fit: BoxFit.contain,
+      child: _lastFrameBytes == null
+          ? const Center(child: CircularProgressIndicator())
+          : Image.memory(_lastFrameBytes!, gaplessPlayback: true),
+    );
   }
 }

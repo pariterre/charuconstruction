@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../concrete_devices/available_devices.dart';
 import 'b24_management_container.dart';
-import 'dual_charucos_management_container.dart';
+import 'webcam_dual_charucos_management_container.dart';
 
 Future<void> manageDevicesDialog(BuildContext context) async {
   return await showDialog(
@@ -49,7 +49,7 @@ class _DeviceManagerContainerState extends State<DeviceManagerContainer> {
           switch (_lastSelectedDevice) {
             AvailableDevices.b24 => const B24ManagementContainer(),
             AvailableDevices.dualCharucos =>
-              const DualCharucosManagementContainer(),
+              const WebcamDualCharucosManagementContainer(),
           },
         ],
       ),

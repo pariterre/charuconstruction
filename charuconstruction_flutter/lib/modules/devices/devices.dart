@@ -11,6 +11,7 @@ export 'charuco/media_reader.dart';
 export 'charuco/widgets/media_reader_container.dart';
 export 'concrete_devices/available_devices.dart';
 export 'concrete_devices/b24_force_sensor.dart';
+export 'concrete_devices/webcam_charucos.dart';
 export 'device.dart';
 export 'device_exceptions.dart';
 export 'providers/devices_provider.dart';

@@ -1,8 +1,16 @@
-import 'camera.dart';
+import 'dart:async';
 
-import 'charuco.dart';
+import 'package:charuconstruction_flutter/utils/generic_listener.dart';
+import 'package:logging/logging.dart';
 
 import '../device.dart';
+import 'camera.dart';
+import 'charuco.dart';
+import 'frame.dart';
+import 'frame_analyser.dart';
+import 'media_reader.dart';
+
+final _logger = Logger('DualCharucos');
 
 class CharucoDevice extends Device {
   ///
@@ -45,5 +53,76 @@ class CharucoDevice extends Device {
     _charucos.clear();
     _camera = null;
     await super.disconnect();
+  }
+}
+
+abstract class WebcamCharucos extends CharucoDevice {
+  @override
+  String get name => "Dual Charucos";
+
+  ///
+  /// The [MediaReader] associated with this device. Will be initialized when the device is connected.
+  MediaReader? get mediaReader;
+
+  ///
+  /// Reading and analyse data
+  StreamSubscription? _frameSubscription;
+  final onNewFrame = GenericListener<Function(Frame? frame)>();
+
+  ///
+  /// The [FrameAnalyser] associated with this device. Will be initialized when the device is connected.
+  FrameAnalyser? _analysers;
+  FrameAnalyser? get analysers => _analysers;
+
+  @override
+  Future<void> connect({
+    List<Charuco>? charucos,
+    Camera? camera,
+    List<FrameAnalyser> analysers = const [],
+  }) async {
+    final output = await super.connect(charucos: charucos, camera: camera);
+
+    _analysers = FrameAnalyserPipeline(analysers: analysers);
+
+    return output;
+  }
+
+  @override
+  Future<void> startReading() async {
+    if (mediaReader == null) {
+      throw StateError('MediaReader must be initialized to start reading');
+    }
+
+    await mediaReader!.startReading();
+
+    _frameSubscription = mediaReader!.readFrames().listen(
+      (frame) => _pushDataFrame(frame),
+      onDone: () => _logger.info('Finished reading frames'),
+      onError: (error) => _logger.severe('Error reading frames: $error'),
+    );
+
+    return await super.startReading();
+  }
+
+  @override
+  Future<void> stopReading() async {
+    _frameSubscription?.cancel();
+    _frameSubscription = null;
+    await mediaReader?.stopReading();
+    return await super.stopReading();
+  }
+
+  @override
+  Future<void> disconnect() async {
+    await mediaReader?.dispose();
+    return await super.disconnect();
+  }
+
+  Future<void> _pushDataFrame(Frame? frame) async {
+    final now = DateTime.now();
+    final analysedFrame = await _analysers?.perform(frame);
+
+    onNewFrame.notifyListeners((listener) => listener(analysedFrame));
+    pushData(now, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   }
 }

@@ -17,11 +17,16 @@ enum AvailableFrameAnalysers {
   };
 }
 
+enum AvailableExtraAnalyses { charucosReconstruction }
+
 abstract class FrameAnalyser {
   ///
   /// Analyse the frames from the media reader.
   ///
-  Future<Frame?> perform(Frame? frame);
+  Future<(Frame?, Map<AvailableExtraAnalyses, dynamic>?)> perform(
+    Frame? frame, {
+    Map<AvailableExtraAnalyses, dynamic>? extraAnalyses,
+  });
 
   ///
   /// Dispose any resources used by the analyser.
@@ -41,10 +46,13 @@ class ReconstructCharucoFrameAnalyser extends FrameAnalyser {
   });
 
   @override
-  Future<Frame?> perform(Frame? frame) async {
+  Future<(Frame?, Map<AvailableExtraAnalyses, dynamic>?)> perform(
+    Frame? frame, {
+    Map<AvailableExtraAnalyses, dynamic>? extraAnalyses,
+  }) async {
     if (frame == null) {
       dispose();
-      return null;
+      return (null, extraAnalyses);
     }
 
     final results = <Charuco, (Vector?, Matrix?)?>{};
@@ -57,28 +65,6 @@ class ReconstructCharucoFrameAnalyser extends FrameAnalyser {
           )) ??
           (null, null);
     }
-
-    //   # Compute the reconstruction error in degrees
-    //   if should_compute_error:
-    //       for charuco in charuco_boards:
-    //           if charuco not in errors:
-    //               errors[charuco] = []
-
-    //           _, rotation = frame_results[charuco]
-    //           if rotation is None:
-    //               errors[charuco].append(np.ndarray((3, 1)) * np.nan)
-    //               continue
-
-    //           sequence = RotationMatrix.Sequence.ZYX
-    //           true_values = (
-    //               reader.transformations(charuco)
-    //               .rotation.to_euler(sequence=sequence, degrees=True)
-    //               .as_array()
-    //           )
-    //           reconstructed_values = rotation.to_euler(
-    //               sequence=sequence, degrees=True
-    //           ).as_array()
-    //           errors[charuco].append(true_values - reconstructed_values)
 
     // Show the estimated pose for each board on the current frame
     for (final charuco in results.keys) {
@@ -97,7 +83,10 @@ class ReconstructCharucoFrameAnalyser extends FrameAnalyser {
       );
     }
 
-    return frame;
+    extraAnalyses ??= {};
+    extraAnalyses[AvailableExtraAnalyses.charucosReconstruction] = results;
+
+    return (frame, extraAnalyses);
   }
 
   @override
@@ -114,16 +103,22 @@ class FrameAnalyserPipeline extends FrameAnalyser {
     : _analysers = analysers;
 
   @override
-  Future<Frame?> perform(Frame? frame) async {
+  Future<(Frame?, Map<AvailableExtraAnalyses, dynamic>?)> perform(
+    Frame? frame, {
+    Map<AvailableExtraAnalyses, dynamic>? extraAnalyses,
+  }) async {
     if (frame == null) {
       dispose();
-      return null;
+      return (null, extraAnalyses);
     }
 
     for (final analyser in _analysers) {
-      frame = await analyser.perform(frame);
+      (frame, extraAnalyses) = await analyser.perform(
+        frame,
+        extraAnalyses: extraAnalyses,
+      );
     }
-    return frame;
+    return (frame, extraAnalyses);
   }
 
   @override
@@ -145,14 +140,17 @@ class VideoSaverAnalyser implements FrameAnalyser {
   }) : _writer = VideoWriter.fromFile(outputPath, 'mp4v', fps, frameSize);
 
   @override
-  Future<Frame?> perform(Frame? frame) async {
+  Future<(Frame?, Map<AvailableExtraAnalyses, dynamic>?)> perform(
+    Frame? frame, {
+    Map<AvailableExtraAnalyses, dynamic>? extraAnalyses,
+  }) async {
     if (frame == null) {
       dispose();
-      return null;
+      return (null, extraAnalyses);
     }
 
     _writer.write(frame.get());
-    return frame;
+    return (frame, extraAnalyses);
   }
 
   @override

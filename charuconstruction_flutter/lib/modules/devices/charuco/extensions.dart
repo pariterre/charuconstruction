@@ -10,6 +10,8 @@ extension VectorExtensions on Vector {
 
 enum CharucoAxis { x, y, z }
 
+enum CharucoAxisSequence { xyz, xzy, yxz, yzx, zxy, zyx }
+
 extension MatrixExtensions on Matrix {
   /// Converts a rotation matrix to a rotation vector in rodriguez representation.
   Mat toMat() => Mat.fromList(
@@ -46,6 +48,75 @@ extension MatrixExtensions on Matrix {
       };
     });
     return rotationMatrices.reduce((a, b) => a * b);
+  }
+
+  ///
+  /// Convert the rotation matrix to Euler angles.
+  /// [sequence] The order of the rotations. Default is XYZ.
+  /// [degrees] Whether to return the angles in degrees. Default is False (radians).
+  /// Returns the rotation angles around the X, Y, and Z axes.
+  ///
+  Vector toEuler({
+    CharucoAxisSequence sequence = CharucoAxisSequence.xyz,
+    bool degrees = true,
+  }) {
+    final (x, y, z) = switch (sequence) {
+      // psi = atan2(-R(2,3,:), R(3,3,:))
+      // theta = asin(R(1,3,:))
+      // phi = atan2(-R(1,2,:), R(1,1,:))
+      CharucoAxisSequence.xyz => (
+        atan2(-this[1][2], this[2][2]),
+        asin(this[0][2]),
+        atan2(-this[0][1], this[0][0]),
+      ),
+
+      // psi = atan2(R(3,2,:), R(2,2,:))
+      // phi = atan2(R(1,3,:), R(1,1,:))
+      // theta = asin(-R(1,2,:))
+      CharucoAxisSequence.xzy => (
+        atan2(this[2][1], this[1][1]),
+        atan2(this[0][2], this[0][0]),
+        asin(-this[0][1]),
+      ),
+
+      // theta = asin(-R(2,3,:))
+      // psi = atan2(R(1,3,:), R(3,3,:))
+      // phi = atan2(R(2,1,:), R(2,2,:))
+      CharucoAxisSequence.yxz => (
+        asin(-this[1][2]),
+        atan2(this[0][2], this[2][2]),
+        atan2(this[1][0], this[1][1]),
+      ),
+
+      // phi = atan2(-R(2,3,:), R(2,2,:))
+      // psi = atan2(-R(3,1,:), R(1,1,:))
+      // theta = asin(R(2,1,:))
+      CharucoAxisSequence.yzx => (
+        atan2(-this[1][2], this[1][1]),
+        atan2(-this[2][0], this[0][0]),
+        asin(this[1][0]),
+      ),
+
+      // theta = asin(R(3,2,:))
+      // phi = atan2(-R(3,1,:), R(3,3,:))
+      // psi = atan2(-R(1,2,:), R(2,2,:))
+      CharucoAxisSequence.zxy => (
+        asin(this[2][1]),
+        atan2(-this[2][0], this[2][2]),
+        atan2(-this[0][1], this[1][1]),
+      ),
+
+      // phi = atan2(R(3,2,:), R(3,3,:))
+      // theta = asin(-R(3,1,:))
+      // psi = atan2(R(2,1,:), R(1,1,:))
+      CharucoAxisSequence.zyx => (
+        atan2(this[2][1], this[2][2]),
+        asin(-this[2][0]),
+        atan2(this[1][0], this[0][0]),
+      ),
+    };
+
+    return Vector.fromList([x, y, z]) * (degrees ? (180 / pi) : 1);
   }
 }
 

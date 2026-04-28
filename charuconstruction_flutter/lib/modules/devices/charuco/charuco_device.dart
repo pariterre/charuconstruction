@@ -82,6 +82,7 @@ abstract class WebcamCharucos extends CharucoDevice {
   }) async {
     final output = await super.connect(charucos: charucos, camera: camera);
 
+    await mediaReader!.initialize();
     _analysers = FrameAnalyserPipeline(analysers: analysers);
 
     return output;
@@ -96,7 +97,7 @@ abstract class WebcamCharucos extends CharucoDevice {
     await mediaReader!.startReading();
 
     _frameSubscription = mediaReader!.readFrames().listen(
-      (frame) => _pushDataFrame(frame),
+      (frame) => pushDataFrame(frame),
       onDone: () => _logger.info('Finished reading frames'),
       onError: (error) => _logger.severe('Error reading frames: $error'),
     );
@@ -118,11 +119,12 @@ abstract class WebcamCharucos extends CharucoDevice {
     return await super.disconnect();
   }
 
-  Future<void> _pushDataFrame(Frame? frame) async {
-    final now = DateTime.now();
-    final analysedFrame = await _analysers?.perform(frame);
+  Future<(Frame?, Map<AvailableExtraAnalyses, dynamic>? extraAnalyses)>
+  pushDataFrame(Frame? frame) async {
+    final (analysedFrame, extraAnalyses) =
+        await _analysers?.perform(frame) ?? (null, null);
 
     onNewFrame.notifyListeners((listener) => listener(analysedFrame));
-    pushData(now, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    return (analysedFrame, extraAnalyses);
   }
 }

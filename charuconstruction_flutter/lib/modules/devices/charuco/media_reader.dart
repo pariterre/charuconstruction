@@ -72,8 +72,8 @@ class WebcamReader implements MediaReader {
   bool _isReading = false;
   bool get _isInitialized =>
       webcamController != null && webcamController!.value.isInitialized;
-  final List<CameraDescription> _availableCameras = [];
   CameraController? webcamController;
+  final List<CameraDescription> _availableCameras = [];
   final imageBuffer = <CameraImage>[];
 
   @override
@@ -210,14 +210,10 @@ class CharucoMockReader implements MediaReader {
   });
 
   @override
-  Future<void> initialize() async {
-    print('yo');
-  }
+  Future<void> initialize() async {}
 
   @override
-  Future<void> startReading() async {
-    print('yo2');
-  }
+  Future<void> startReading() async {}
 
   @override
   Future<void> stopReading() async {

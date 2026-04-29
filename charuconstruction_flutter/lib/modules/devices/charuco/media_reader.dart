@@ -68,6 +68,27 @@ class ImageReader implements MediaReader {
   }
 }
 
+enum WebcamResolution {
+  low(ResolutionPreset.low),
+  medium(ResolutionPreset.medium),
+  high(ResolutionPreset.high),
+  veryHigh(ResolutionPreset.veryHigh),
+  ultraHigh(ResolutionPreset.ultraHigh);
+
+  final ResolutionPreset value;
+  const WebcamResolution(this.value);
+}
+
+enum WebcamFPS {
+  fps15(15),
+  fps30(30),
+  fps60(60),
+  fps120(120);
+
+  final int value;
+  const WebcamFPS(this.value);
+}
+
 class WebcamReader implements MediaReader {
   bool _isReading = false;
   bool get _isInitialized =>
@@ -75,20 +96,31 @@ class WebcamReader implements MediaReader {
   CameraController? webcamController;
   final List<CameraDescription> _availableCameras = [];
   final imageBuffer = <CameraImage>[];
+
   bool _isPortrait = false;
+  WebcamResolution _selectedResolution = WebcamResolution.medium;
+  WebcamResolution get resolution => _selectedResolution;
+  WebcamFPS _selectedFPS = WebcamFPS.fps60;
+  WebcamFPS get fps => _selectedFPS;
 
   @override
-  Future<void> initialize() async {
+  Future<void> initialize({
+    WebcamResolution resolution = WebcamResolution.medium,
+    WebcamFPS fps = WebcamFPS.fps60,
+  }) async {
     _availableCameras.addAll(await availableCameras());
     if (_availableCameras.isEmpty) {
       throw Exception("No cameras available");
     }
 
+    _selectedResolution = resolution;
+    _selectedFPS = fps;
+
     webcamController = CameraController(
       _availableCameras.first,
-      ResolutionPreset.high,
+      resolution.value,
       enableAudio: false,
-      fps: 300,
+      fps: fps.value,
     );
     await webcamController!.initialize();
   }

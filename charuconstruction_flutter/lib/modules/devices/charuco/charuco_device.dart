@@ -79,10 +79,19 @@ abstract class WebcamCharucos extends CharucoDevice {
     List<Charuco>? charucos,
     Camera? camera,
     List<FrameAnalyser> analysers = const [],
+    WebcamResolution resolution = WebcamResolution.medium,
+    WebcamFPS fps = WebcamFPS.fps60,
   }) async {
     final output = await super.connect(charucos: charucos, camera: camera);
 
-    await mediaReader!.initialize();
+    if (mediaReader is WebcamReader) {
+      await (mediaReader as WebcamReader).initialize(
+        resolution: resolution,
+        fps: fps,
+      );
+    } else {
+      await mediaReader!.initialize();
+    }
     _analysers = FrameAnalyserPipeline(analysers: analysers);
 
     return output;

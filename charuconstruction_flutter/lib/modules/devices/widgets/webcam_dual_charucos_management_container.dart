@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import '../charuco/camera.dart';
 import '../charuco/charuco.dart';
 import '../charuco/frame_analyser.dart';
+import '../charuco/media_reader.dart';
 import '../concrete_devices/available_devices.dart';
 import '../concrete_devices/webcam_charucos.dart';
 import '../device_exceptions.dart';
@@ -44,6 +45,8 @@ class _WebcamDualCharucosManagementContainerState
   late final Set<AvailableFrameAnalysers> _selectedFrameAnalyser;
 
   bool _isPortrait = false;
+  WebcamResolution _selectedResolution = WebcamResolution.medium;
+  WebcamFPS _selectedFPS = WebcamFPS.fps60;
   bool _showReconstructedCharucosOnFrame = true;
 
   @override
@@ -68,6 +71,11 @@ class _WebcamDualCharucosManagementContainerState
     if (_device.camera != null) {
       _selectedCamera = CameraModels.fromString(_device.camera!.name);
       _isPortrait = _device.camera!.isPortrait;
+    }
+    if (_device.mediaReader is WebcamReader) {
+      final webcamReader = _device.mediaReader as WebcamReader;
+      _selectedResolution = webcamReader.resolution;
+      _selectedFPS = webcamReader.fps;
     }
 
     final analyzers = isFirst
@@ -192,6 +200,54 @@ class _WebcamDualCharucosManagementContainerState
                   _isPortrait = value!;
                 });
               },
+            ),
+          ),
+
+          SizedBox(height: 20),
+          Text('Select the resolution'),
+          RadioGroup(
+            groupValue: _selectedResolution,
+            onChanged: (value) {
+              setState(() {
+                _selectedResolution = value!;
+              });
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: WebcamResolution.values.map((resolution) {
+                return SizedBox(
+                  width: 400,
+                  child: RadioListTile<WebcamResolution>(
+                    title: Text(resolution.toString()),
+                    enabled: _device.isNotConnected,
+                    value: resolution,
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+
+          SizedBox(height: 20),
+          Text('Select the FPS'),
+          RadioGroup(
+            groupValue: _selectedFPS,
+            onChanged: (value) {
+              setState(() {
+                _selectedFPS = value!;
+              });
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: WebcamFPS.values.map((fps) {
+                return SizedBox(
+                  width: 400,
+                  child: RadioListTile<WebcamFPS>(
+                    title: Text(fps.toString()),
+                    enabled: _device.isNotConnected,
+                    value: fps,
+                  ),
+                );
+              }).toList(),
             ),
           ),
 
@@ -358,6 +414,8 @@ class _WebcamDualCharucosManagementContainerState
         charucos: charucos,
         camera: camera,
         analysers: analyzers,
+        resolution: _selectedResolution,
+        fps: _selectedFPS,
       );
       await _device.startReading();
       _statusMessage = 'Connected to the Charucos feed: ${_device.name}';

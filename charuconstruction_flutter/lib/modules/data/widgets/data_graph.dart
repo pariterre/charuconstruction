@@ -334,7 +334,7 @@ class _ChannelOptionsPopupState extends State<_ChannelOptionsPopup> {
     const showWidth = 40.0;
 
     return SizedBox(
-      width: 100.0,
+      width: 105.0,
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),

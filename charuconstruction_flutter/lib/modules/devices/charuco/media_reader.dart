@@ -75,6 +75,7 @@ class WebcamReader implements MediaReader {
   CameraController? webcamController;
   final List<CameraDescription> _availableCameras = [];
   final imageBuffer = <CameraImage>[];
+  bool _isPortrait = false;
 
   @override
   Future<void> initialize() async {
@@ -93,13 +94,14 @@ class WebcamReader implements MediaReader {
   }
 
   @override
-  Future<void> startReading() async {
+  Future<void> startReading({bool isPortrait = false}) async {
     if (!_isInitialized) {
       throw Exception("Webcam not initialized. Call initialize() first.");
     }
     if (_isReading) return;
 
     _isReading = true;
+    _isPortrait = isPortrait;
     await webcamController!.startImageStream(_addToBuffer);
   }
 
@@ -125,8 +127,12 @@ class WebcamReader implements MediaReader {
           await Future.delayed(Duration(milliseconds: 10));
           continue;
         }
+
         final cameraImage = imageBuffer.removeAt(0);
-        final bytes = _toRgb(frame: cameraImage, rotation: 90);
+        final bytes = _toRgb(
+          frame: cameraImage,
+          rotation: _isPortrait ? 90 : 0,
+        );
         if (bytes == null) {
           yield null;
           continue;

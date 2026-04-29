@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
@@ -37,9 +38,12 @@ class _WebcamDualCharucosManagementContainerState
   late final _availableCharucos = <String>[];
 
   final List<String> _selectedCharucos = [];
-  CameraModels _selectedCamera = CameraModels.pixel2;
+  CameraModels _selectedCamera = Platform.isIOS
+      ? CameraModels.ios
+      : CameraModels.pixel2;
   late final Set<AvailableFrameAnalysers> _selectedFrameAnalyser;
 
+  bool _isPortrait = false;
   bool _showReconstructedCharucosOnFrame = true;
 
   @override
@@ -60,6 +64,11 @@ class _WebcamDualCharucosManagementContainerState
           .map((filePath) => filePath)
           .toList(),
     );
+
+    if (_device.camera != null) {
+      _selectedCamera = CameraModels.fromString(_device.camera!.toString());
+      _isPortrait = _device.camera!.isPortrait;
+    }
 
     final analyzers = isFirst
         ? null
@@ -168,6 +177,21 @@ class _WebcamDualCharucosManagementContainerState
                   ),
                 );
               }).toList(),
+            ),
+          ),
+
+          SizedBox(height: 20),
+          SizedBox(
+            width: 400,
+            child: CheckboxListTile(
+              title: Text('Is camera vertical'),
+              value: _isPortrait,
+              enabled: _device.isNotConnected,
+              onChanged: (value) {
+                setState(() {
+                  _isPortrait = value!;
+                });
+              },
             ),
           ),
 
@@ -285,7 +309,10 @@ class _WebcamDualCharucosManagementContainerState
     }).toList();
     final charucos = await Future.wait(charucosFutures);
 
-    final camera = _selectedCamera.toCamera(useVideoParameters: true);
+    final camera = _selectedCamera.toCamera(
+      useVideoParameters: true,
+      isPortrait: _isPortrait,
+    );
 
     setState(() {
       _isBusy = true;

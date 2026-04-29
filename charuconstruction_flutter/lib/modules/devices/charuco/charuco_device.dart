@@ -94,7 +94,13 @@ abstract class WebcamCharucos extends CharucoDevice {
       throw StateError('MediaReader must be initialized to start reading');
     }
 
-    await mediaReader!.startReading();
+    if (mediaReader is WebcamReader) {
+      await (mediaReader as WebcamReader).startReading(
+        isPortrait: camera!.isPortrait,
+      );
+    } else {
+      await mediaReader!.startReading();
+    }
 
     _frameSubscription = mediaReader!.readFrames().listen(
       (frame) => pushDataFrame(frame),

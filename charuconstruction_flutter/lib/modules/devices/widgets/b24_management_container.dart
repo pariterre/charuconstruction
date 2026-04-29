@@ -35,6 +35,7 @@ class _B24ManagementContainerState extends State<B24ManagementContainer> {
               child: Text('Scan for B24 Sensor'),
             ),
           ),
+
           Padding(
             padding: const EdgeInsets.only(bottom: 20.0),
             child: SizedBox(
@@ -56,6 +57,7 @@ class _B24ManagementContainerState extends State<B24ManagementContainer> {
               ),
             ),
           ),
+
           Padding(
             padding: const EdgeInsets.only(bottom: 20.0),
             child: Row(

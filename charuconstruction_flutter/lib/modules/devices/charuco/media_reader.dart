@@ -77,6 +77,22 @@ enum WebcamResolution {
 
   final ResolutionPreset value;
   const WebcamResolution(this.value);
+
+  @override
+  String toString() {
+    switch (this) {
+      case WebcamResolution.low:
+        return "Low (~240p)";
+      case WebcamResolution.medium:
+        return "Medium (~480p)";
+      case WebcamResolution.high:
+        return "High (~720p)";
+      case WebcamResolution.veryHigh:
+        return "Very High (~1080p)";
+      case WebcamResolution.ultraHigh:
+        return "Ultra High (~2160p)";
+    }
+  }
 }
 
 enum WebcamFPS {
@@ -87,6 +103,11 @@ enum WebcamFPS {
 
   final int value;
   const WebcamFPS(this.value);
+
+  @override
+  String toString() {
+    return value.toString();
+  }
 }
 
 class WebcamReader implements MediaReader {

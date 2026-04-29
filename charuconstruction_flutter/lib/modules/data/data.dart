@@ -5,13 +5,18 @@
 // https://github.com/LabNNL/neurobiomech_software/blob/main/frontend_fundamentals/lib/models/data.dart
 //
 
+import 'dart:io';
+
 import 'package:collection/collection.dart';
+import 'package:logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'time_series_data.dart';
 
 export 'time_series_data.dart';
 export 'widgets/data_graph.dart';
+
+final _logger = Logger('Data');
 
 class Data {
   DateTime _initialTime;
@@ -31,16 +36,6 @@ class Data {
   Data({required DateTime initialTime, required bool isFromLiveData})
     : _initialTime = initialTime,
       _devices = {};
-
-  ///
-  /// Create a new data instance from a copy of another data instance, with the option to set whether the data is from live data or not
-  /// [initialTime] is the initial time of the data, used to compute the time vector of the devices
-  /// [devices] is the list of devices to copy
-  Data._fromCopy({
-    required DateTime initialTime,
-    required Map<String, TimeSeriesData> devices,
-  }) : _initialTime = initialTime,
-       _devices = devices;
 
   ///
   /// API METHODS
@@ -65,14 +60,17 @@ class Data {
 
   ///
   /// Clear the data and reset the initial time if provided
+  /// [initialTime] is the new initial time of the data, if not provided, the initial time will not be changed
+  /// [keepDevices] is whether to keep the devices in the data pool or not
   ///
-  void clear({DateTime? initialTime}) {
+  void clear({DateTime? initialTime, bool keepDevices = false}) {
     _initialTime = initialTime ?? _initialTime;
 
     for (final device in _devices.values) {
-      device.clear();
+      device.clear(timeOffset: _initialTime);
     }
-    _devices.clear();
+
+    if (!keepDevices) _devices.clear();
   }
 
   ///
@@ -145,25 +143,15 @@ class Data {
         .first;
     final folderPath = '${baseDir.path}/$folderName/';
 
+    // Create the folder if it doesn't exist
+    final folder = Directory(folderPath);
+    if (!await folder.exists()) {
+      await folder.create(recursive: true);
+    }
     await Future.wait([
       for (final key in _devices.keys)
         _devices[key]!.toFile('$folderPath/$key.csv'),
     ]);
+    _logger.info('Data saved to $folderPath');
   }
-
-  ///
-  /// Create a copy of the data, with the option to set whether the change the [isFromLiveData]
-  /// property of the devices or not
-  ///
-  Data copy({bool isFromLiveData = false}) => Data._fromCopy(
-    initialTime: initialTime,
-    devices: Map.fromEntries(
-      _devices.entries.map(
-        (entry) => MapEntry(
-          entry.key,
-          entry.value.copy(isFromLiveData: isFromLiveData),
-        ),
-      ),
-    ),
-  );
 }

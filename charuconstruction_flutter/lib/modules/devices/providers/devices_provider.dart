@@ -19,6 +19,8 @@ class DevicesProvider {
   /// Prepare the singleton instance
   ///
   DevicesProvider._() {
+    _data.clear(initialTime: DateTime.now(), keepDevices: false);
+
     for (final device in AvailableDevices.values) {
       final newDevice = device.factory();
 
@@ -27,9 +29,10 @@ class DevicesProvider {
 
       // Add a reference to the device data in the data pool
       _data.add(device.name, newDevice.data);
-      // Reset the initial time for all the devices
-      _data.clear(initialTime: DateTime.now());
     }
+
+    // Reset the initial time for all the devices
+    clearData();
   }
   static final DevicesProvider _instance = DevicesProvider._();
   static DevicesProvider get instance => _instance;
@@ -51,4 +54,18 @@ class DevicesProvider {
   ///
   List<Device> get connectedDevices =>
       _devices.values.where((d) => d.isConnected).toList();
+
+  ///
+  /// Save the data collected from the devices
+  ///
+  Future<void> saveData() async {
+    await _data.toFiles();
+  }
+
+  ///
+  /// Clear the data collected from the devices and reset the initial time
+  ///
+  Future<void> clearData() async {
+    _data.clear(initialTime: DateTime.now(), keepDevices: true);
+  }
 }

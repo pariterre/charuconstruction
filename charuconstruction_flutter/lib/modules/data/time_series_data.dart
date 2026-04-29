@@ -24,16 +24,18 @@ class TimeSeriesData {
 
   final onNewData = GenericListener<Function()>();
 
-  void clear() {
-    resetTime();
+  ///
+  /// Reset the data.
+  /// [timeOffset] Is the new initial time offset to use, if null, the next data
+  /// point will be used as the time offset. If one wants to keep the same time offset,
+  /// they should send the current time offset as an argument (i.e., timeOffset: this.startingTime).
+  void clear({required DateTime? timeOffset}) {
+    _timeOffset = timeOffset?.millisecondsSinceEpoch;
+
+    time.clear();
     for (var channel in _data) {
       channel.clear();
     }
-  }
-
-  void resetTime() {
-    time.clear();
-    _timeOffset = null;
   }
 
   int get length => time.length;
@@ -61,7 +63,7 @@ class TimeSeriesData {
 
     // If this is the first time stamps, we need to set the time offset
     if (timeSeries.isEmpty) return -1;
-    bool isNew = _timeOffset == null;
+    bool isNew = time.isEmpty;
     _timeOffset ??= isFromLiveData ? timeSeries.last[0] : timeSeries.first[0];
 
     final maxLength = timeSeries.length;
@@ -116,7 +118,7 @@ class TimeSeriesData {
     final firstIndexToKeep = time.indexWhere((value) => value >= elapsedTime);
     if (firstIndexToKeep == -1) {
       // If we get to the end, we should drop everything
-      clear();
+      clear(timeOffset: null);
     } else {
       time.removeRange(0, firstIndexToKeep);
       for (var channel in _data) {
@@ -138,18 +140,5 @@ class TimeSeriesData {
       }
     }
     return lastIndexToKeep;
-  }
-
-  TimeSeriesData copy({bool isFromLiveData = false}) {
-    final copy = TimeSeriesData(
-      channelCount: channelCount,
-      isFromLiveData: isFromLiveData,
-    );
-    copy._timeOffset = null;
-    copy.time.addAll(time);
-    for (int channelIndex = 0; channelIndex < channelCount; channelIndex++) {
-      copy._data[channelIndex].addAll(_data[channelIndex]);
-    }
-    return copy;
   }
 }

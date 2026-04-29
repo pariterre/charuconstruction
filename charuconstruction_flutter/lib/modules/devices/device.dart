@@ -44,7 +44,7 @@ abstract class Device {
   /// Connect to the device. If the device requires a pin, it should be provided as an argument.
   ///
   Future<void> connect() async {
-    clearData();
+    clearData(timeOffset: data.startingTime);
 
     _isConnected = true;
 
@@ -101,8 +101,8 @@ abstract class Device {
     _logger.info('Stopped reading data!');
   }
 
-  void clearData() {
-    data.clear();
+  void clearData({required DateTime? timeOffset}) {
+    data.clear(timeOffset: timeOffset);
   }
 
   ///

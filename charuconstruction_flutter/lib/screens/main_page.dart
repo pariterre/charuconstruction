@@ -43,6 +43,20 @@ class _MainPageState extends State<MainPage> {
                 onPressed: _manageDevices,
                 child: Text('Manage sensor devices'),
               ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ElevatedButton(
+                    onPressed: _saveData,
+                    child: Text('Save Data'),
+                  ),
+                  SizedBox(width: 20),
+                  ElevatedButton(
+                    onPressed: _clearData,
+                    child: Text('Clear Data'),
+                  ),
+                ],
+              ),
               ...DevicesProvider.instance.connectedDevices.map(
                 (device) => Padding(
                   padding: const EdgeInsets.only(top: 20.0),
@@ -64,5 +78,23 @@ class _MainPageState extends State<MainPage> {
     await manageDevicesDialog(context);
     if (!mounted) return;
     setState(() {});
+  }
+
+  Future<void> _saveData() async {
+    await DevicesProvider.instance.saveData();
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Data saved successfully!')));
+  }
+
+  Future<void> _clearData() async {
+    DevicesProvider.instance.clearData();
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Data cleared successfully!')));
   }
 }

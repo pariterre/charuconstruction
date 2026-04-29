@@ -55,12 +55,7 @@ class _DeviceDataContainerState extends State<DeviceDataContainer> {
           else
             Text('No data received yet'),
           SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () {
-              widget.device.clearData();
-            },
-            child: Text('Clear Data'),
-          ),
+
           DataGraph(controller: graphController),
         ],
       ),

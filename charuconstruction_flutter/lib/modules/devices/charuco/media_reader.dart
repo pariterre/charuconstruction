@@ -138,8 +138,8 @@ class WebcamReader implements MediaReader {
           continue;
         }
         final frame = Mat.fromList(
-          cameraImage.width,
-          cameraImage.height,
+          _isPortrait ? cameraImage.width : cameraImage.height,
+          _isPortrait ? cameraImage.height : cameraImage.width,
           MatType.CV_8UC(3),
           bytes,
         );

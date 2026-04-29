@@ -66,7 +66,7 @@ class _WebcamDualCharucosManagementContainerState
     );
 
     if (_device.camera != null) {
-      _selectedCamera = CameraModels.fromString(_device.camera!.toString());
+      _selectedCamera = CameraModels.fromString(_device.camera!.name);
       _isPortrait = _device.camera!.isPortrait;
     }
 

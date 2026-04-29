@@ -106,10 +106,16 @@ abstract class Device {
   }
 
   ///
+  /// Set the current data as the zero of the device.
+  ///
+  Future<void> setZero();
+
+  ///
   /// The data vector of the data received from the device. This method is expected
   /// to be called by the device implementation when new data is received.
   /// [timestamp] is the timestamp of the data
   /// [values] is the list of values of the data, in the same order as the channels of the device
+  ///
   Future<void> pushData(DateTime timestamp, List<double> values) async {
     data.appendFromJson({
       'data': [

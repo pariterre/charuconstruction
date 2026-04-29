@@ -57,6 +57,9 @@ class _MainPageState extends State<MainPage> {
                   ),
                 ],
               ),
+              SizedBox(width: 20),
+              ElevatedButton(onPressed: _setZero, child: Text('Set zero')),
+              SizedBox(width: 20),
               ...DevicesProvider.instance.connectedDevices.map(
                 (device) => Padding(
                   padding: const EdgeInsets.only(top: 20.0),
@@ -96,5 +99,14 @@ class _MainPageState extends State<MainPage> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text('Data cleared successfully!')));
+  }
+
+  Future<void> _setZero() async {
+    await DevicesProvider.instance.setZero();
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Zero set successfully!')));
   }
 }

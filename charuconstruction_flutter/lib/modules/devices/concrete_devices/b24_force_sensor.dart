@@ -33,6 +33,8 @@ enum B24ResolutionConfiguration {
 /// ---------------- MAIN CLASS ----------------
 
 class B24ForceSensor extends BleDevice {
+  double _zeroOffset = 0.0;
+
   B24ForceSensor();
 
   @override
@@ -94,6 +96,17 @@ class B24ForceSensor extends BleDevice {
       );
     }
     return super.disconnect();
+  }
+
+  @override
+  Future<void> setZero() async {
+    final int dataCount = data.length;
+    final lastDataList = data.getData()[0].sublist(
+      max(0, dataCount - 1000),
+      dataCount - 1,
+    );
+    final sum = lastDataList.fold(0.0, (prev, e) => prev + e);
+    _zeroOffset = sum / lastDataList.length;
   }
 
   /// ---------------- CONFIGURATION ----------------
@@ -167,7 +180,8 @@ class B24ForceSensor extends BleDevice {
     final timestamp = DateTime.now();
 
     double value = data.length == 4 ? BleDevice.unpackF32(data) : double.nan;
-    await pushData(timestamp, [value]);
+    // TODO: Confirm we actually want to save the zeroed data
+    await pushData(timestamp, [value - _zeroOffset]);
   }
 
   void _onStatus(List<int> data) {

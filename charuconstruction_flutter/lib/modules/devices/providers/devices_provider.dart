@@ -68,4 +68,14 @@ class DevicesProvider {
   Future<void> clearData() async {
     _data.clear(initialTime: DateTime.now(), keepDevices: true);
   }
+
+  ///
+  /// Set the zero offset for all connected devices
+  ///
+  Future<void> setZero() async {
+    for (final device in connectedDevices) {
+      await device.setZero();
+    }
+    await clearData();
+  }
 }

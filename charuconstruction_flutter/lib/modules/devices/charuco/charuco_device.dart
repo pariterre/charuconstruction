@@ -12,7 +12,7 @@ import 'media_reader.dart';
 
 final _logger = Logger('DualCharucos');
 
-class CharucoDevice extends Device {
+abstract class CharucoDevice extends Device {
   ///
   /// The list of Charuco boards that the device is configured to read.
   final List<Charuco> _charucos = [];

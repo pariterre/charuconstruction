@@ -30,6 +30,9 @@ enum AvailableDualCharucos {
 }
 
 class WebcamDualCharucos extends WebcamCharucos {
+  Matrix? _zeroRotationFirst;
+  Matrix? _zeroRotationSecond;
+
   MediaReader? _webcamReader;
   set webcamReader(MediaReader? reader) => _webcamReader = reader;
 
@@ -85,6 +88,13 @@ class WebcamDualCharucos extends WebcamCharucos {
     return (frame, extraAnalyses);
   }
 
+  @override
+  Future<void> setZero() async {
+    // Setting them to null will make the next frame as the new zero
+    _zeroRotationFirst = null;
+    _zeroRotationSecond = null;
+  }
+
   Future<void> _pushReconstructedCharucos({
     required DateTime now,
     required Map<Charuco, (Vector?, Matrix?)?> charucos,
@@ -99,6 +109,8 @@ class WebcamDualCharucos extends WebcamCharucos {
     final data = charucos.values.toList();
     final rotationFirst = data.first?.$2;
     final rotationSecond = data.last?.$2;
+    _zeroRotationFirst ??= rotationFirst;
+    _zeroRotationSecond ??= rotationSecond;
 
     if (rotationFirst == null || rotationSecond == null) {
       _logger.warning(
@@ -107,11 +119,16 @@ class WebcamDualCharucos extends WebcamCharucos {
       return;
     }
 
-    final transformation = rotationFirst.transpose() * rotationSecond;
+    // TODO Validate the zeroing method (problem: should use more than one frame => mean matrix must be computed)
+    final firstZeroed = _zeroRotationFirst!.transpose() * rotationFirst;
+    final secondZeroed = _zeroRotationSecond!.transpose() * rotationSecond;
+
+    final transformation = firstZeroed.transpose() * secondZeroed;
     final results = transformation
         .toEuler(sequence: CharucoAxisSequence.yzx)
         .toList();
 
+    // TODO Store the matrices as well? If so, zeroing can be done in the setZero method
     pushData(now, results);
   }
 }

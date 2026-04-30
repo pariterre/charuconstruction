@@ -1,4 +1,4 @@
-import 'package:ml_linalg/linalg.dart';
+import 'package:advance_math/advance_math.dart';
 import 'package:opencv_dart/opencv_dart.dart';
 
 enum CameraModels {

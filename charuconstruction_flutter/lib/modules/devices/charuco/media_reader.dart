@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:logging/logging.dart';
-import 'package:ml_linalg/linalg.dart';
+import 'package:advance_math/advance_math.dart' as adv_math;
 import 'package:opencv_dart/opencv.dart';
 
 import 'camera.dart';
@@ -253,7 +253,7 @@ class CharucoMockReader implements MediaReader {
   /// transformations (translation, rotation) for each board in that frame.
   /// Therefore each inner list should have the same length as the number of Charuco boards.
   ///
-  final Stream<List<(Vector, Matrix)>> transformations;
+  final Stream<List<(adv_math.Vector, adv_math.Matrix)>> transformations;
   StreamSubscription? _transformationSubscription;
 
   ///
@@ -336,17 +336,17 @@ class CharucoMockReader implements MediaReader {
   (Mat, Mat) _projectBoard({
     required Charuco charuco,
     required Camera camera,
-    required Vector translation,
-    required Matrix rotation,
+    required adv_math.Vector translation,
+    required adv_math.Matrix rotation,
   }) {
     // Scale the translation part of the transformation by the camera's focal
     // length to simulate perspective projection
     final pixelTranslation = translation * camera.focalLength;
 
     // Drop the third column of rotation and concatenate the translation
-    final projectionMatrix = rotation
-        .filterColumns((_, index) => index != 2)
-        .insertColumns(2, [pixelTranslation]);
+    final projectionMatrix = rotation.removeColumn(2).insertColumn(2, [
+      pixelTranslation,
+    ]);
 
     // Remove the third column of the transformation to get a 3x4 matrix for projection
     final hMatrix = camera.matrixAsLinalg * projectionMatrix;
@@ -354,10 +354,10 @@ class CharucoMockReader implements MediaReader {
     // Corners of the img
     final height = charuco.boardImage.rows;
     final width = charuco.boardImage.cols;
-    final sMatrix = Matrix.fromList([
-      [1, 0, -width / 2],
-      [0, 1, -height / 2],
-      [0, 0, 1],
+    final sMatrix = adv_math.Matrix.fromList([
+      [1.0, 0.0, -width.toDouble() / 2.0],
+      [0.0, 1.0, -height.toDouble() / 2.0],
+      [0.0, 0.0, 1.0],
     ]);
 
     // Compute the homography and warp the image

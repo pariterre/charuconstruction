@@ -185,7 +185,7 @@ class Charuco {
   /// can (should) be the output of a previous detection, which can help to improve the pose estimation
   /// [ignoreReconstructionError] Whether to ignore reconstruction errors during detection.
   ///
-  /// Returns the translation and rotation (rodriguez representation) vectors of the
+  /// Returns the translation and rotation (rodrigues representation) vectors of the
   /// charuco board in the camera frame, or null if the detection fails.
   Future<(Mat, Mat)?> detect({
     required Frame frame,

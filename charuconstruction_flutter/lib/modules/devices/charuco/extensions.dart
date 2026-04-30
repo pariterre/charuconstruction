@@ -1,11 +1,10 @@
-import 'dart:math';
-
-import 'package:ml_linalg/linalg.dart';
+import 'package:advance_math/advance_math.dart';
 import 'package:opencv_dart/opencv_dart.dart';
 
 extension VectorExtensions on Vector {
-  /// Converts a rotation vector in rodriguez representation to a rotation matrix.
-  Mat toMat() => Mat.fromList(length, 1, MatType(MatType.CV_32F), toList());
+  /// Converts a rotation vector in rodrigues representation to a rotation matrix.
+  Mat toMat() =>
+      Mat.fromList(length, 1, MatType(MatType.CV_32F), toList().cast<double>());
 }
 
 enum CharucoAxis { x, y, z }
@@ -13,12 +12,12 @@ enum CharucoAxis { x, y, z }
 enum CharucoAxisSequence { xyz, xzy, yxz, yzx, zxy, zyx }
 
 extension MatrixExtensions on Matrix {
-  /// Converts a rotation matrix to a rotation vector in rodriguez representation.
+  /// Converts a rotation matrix to a rotation vector in rodrigues representation.
   Mat toMat() => Mat.fromList(
     rowCount,
     columnCount,
     MatType(MatType.CV_32F),
-    toList().map((e) => e.toList()).expand((i) => i).toList(),
+    toList().map((e) => e.toList()).expand((i) => i).toList().cast<double>(),
   );
 
   static Matrix fromEuler(
@@ -31,19 +30,19 @@ extension MatrixExtensions on Matrix {
 
       return switch (axis) {
         CharucoAxis.x => Matrix.fromList([
-          [1, 0, 0],
-          [0, cos(rad), -sin(rad)],
-          [0, sin(rad), cos(rad)],
+          [1.0, 0.0, 0.0],
+          [0.0, cos(rad), -sin(rad)],
+          [0.0, sin(rad), cos(rad)],
         ]),
         CharucoAxis.y => Matrix.fromList([
-          [cos(rad), 0, sin(rad)],
-          [0, 1, 0],
-          [-sin(rad), 0, cos(rad)],
+          [cos(rad), 0.0, sin(rad)],
+          [0.0, 1.0, 0.0],
+          [-sin(rad), 0.0, cos(rad)],
         ]),
         CharucoAxis.z => Matrix.fromList([
-          [cos(rad), -sin(rad), 0],
-          [sin(rad), cos(rad), 0],
-          [0, 0, 1],
+          [cos(rad), -sin(rad), 0.0],
+          [sin(rad), cos(rad), 0.0],
+          [0.0, 0.0, 1.0],
         ]),
       };
     });
@@ -116,12 +115,12 @@ extension MatrixExtensions on Matrix {
       ),
     };
 
-    return Vector.fromList([x, y, z]) * (degrees ? (180 / pi) : 1);
+    return Vector.fromList([x, y, z]) * (degrees ? (180.0 / pi) : 1.0);
   }
 }
 
 extension MatExtensions on Mat {
-  /// Converts a rotation matrix to a rotation vector in rodriguez representation.
+  /// Converts a rotation matrix to a rotation vector in rodrigues representation.
   Vector toVector() {
     if (cols != 1) {
       throw ArgumentError('Expected a column vector (Nx1), got ${rows}x$cols');
@@ -130,6 +129,7 @@ extension MatExtensions on Mat {
   }
 
   Matrix toMatrix() {
-    return Matrix.fromList(toList().cast<List<double>>());
+    Matrix();
+    return Matrix.fromList(toList());
   }
 }

@@ -14,7 +14,7 @@ dependencies:
   logging: ^1.3.0
   collection: ^1.19.1
   path_provider: ^2.1.5
-  ml_linalg: ^13.12.7
+  advance_math: ^5.5.3
   universal_ble: ^1.2.0
   opencv_dart: ^2.2.2
   dartcv4: ^2.2.2

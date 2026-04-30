@@ -46,10 +46,13 @@ class CharuconstructionApp extends StatefulWidget {
   State<CharuconstructionApp> createState() => _CharuconstructionAppState();
 }
 
-class _CharuconstructionAppState extends State<CharuconstructionApp> {
+class _CharuconstructionAppState extends State<CharuconstructionApp>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+
+    WidgetsBinding.instance.addObserver(this);
 
     // Make sure all the devices are disconnected when the app is closed
     AppLifecycleListener(
@@ -71,17 +74,34 @@ class _CharuconstructionAppState extends State<CharuconstructionApp> {
           ),
         );
 
-        final toWait = <Future>[];
-        for (final device in DevicesProvider.instance.connectedDevices) {
-          toWait.add(device.disconnect());
-        }
-        await Future.wait(toWait);
+        await _performExit();
 
         // close the waiting dialog
         if (mounted) Navigator.of(context).pop();
         return AppExitResponse.exit;
       },
     );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    if (state == AppLifecycleState.paused) {
+      await _performExit();
+    }
+  }
+
+  Future<void> _performExit() async {
+    final toWait = <Future>[];
+    for (final device in DevicesProvider.instance.connectedDevices) {
+      toWait.add(device.disconnect());
+    }
+    await Future.wait(toWait);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   @override

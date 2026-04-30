@@ -43,6 +43,9 @@ class WebcamDualCharucos extends WebcamCharucos {
   int get channelCount => 3; // Eulers angles between the two charucos
 
   @override
+  List<bool> get channelToShowByDefault => [true, true, true];
+
+  @override
   Future<void> connect({
     List<Charuco>? charucos,
     Camera? camera,

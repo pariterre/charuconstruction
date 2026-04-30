@@ -24,10 +24,12 @@ class DataGraph extends StatefulWidget {
     super.key,
     required this.controller,
     this.combineGraphs = false,
+    this.initialChannelsToShow,
   });
 
   final bool combineGraphs;
   final DataGraphController controller;
+  final List<bool>? initialChannelsToShow;
 
   @override
   State<DataGraph> createState() => _DataGraphState();
@@ -89,10 +91,9 @@ class _DataGraphState extends State<DataGraph> {
     });
   }
 
-  late final List<bool> _showChannels = List.generate(
-    _channelCount,
-    (_) => true,
-  );
+  late final List<bool> _showChannels = widget.initialChannelsToShow == null
+      ? List.generate(_channelCount, (_) => true)
+      : [...widget.initialChannelsToShow!];
   void _onChannelSelected(int channel, bool newValue) {
     setState(() {
       _showChannels[channel] = newValue;

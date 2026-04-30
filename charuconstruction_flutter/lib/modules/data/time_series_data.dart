@@ -112,10 +112,14 @@ class TimeSeriesData {
     await sink.close();
   }
 
-  int dropBefore(double elapsedTime) {
+  ///
+  /// Keep data that are after [lastTimeStepToKeep] (in milliseconds)
+  int dropBefore(int lastTimeStepToKeep) {
     if (time.isEmpty) return 0;
 
-    final firstIndexToKeep = time.indexWhere((value) => value >= elapsedTime);
+    final firstIndexToKeep = time.indexWhere(
+      (value) => value >= lastTimeStepToKeep,
+    );
     if (firstIndexToKeep == -1) {
       // If we get to the end, we should drop everything
       clear(timeOffset: null);

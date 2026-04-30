@@ -56,7 +56,10 @@ class _DeviceDataContainerState extends State<DeviceDataContainer> {
             Text('No data received yet'),
           SizedBox(height: 20),
 
-          DataGraph(controller: graphController),
+          DataGraph(
+            controller: graphController,
+            initialChannelsToShow: widget.device.channelToShowByDefault,
+          ),
         ],
       ),
     );

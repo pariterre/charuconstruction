@@ -109,8 +109,7 @@ class Data {
   void dropBefore(DateTime t) {
     for (final device in _devices.values) {
       device.dropBefore(
-        (t.millisecondsSinceEpoch - initialTime.millisecondsSinceEpoch)
-            .toDouble(),
+        t.millisecondsSinceEpoch - initialTime.millisecondsSinceEpoch,
       );
     }
   }

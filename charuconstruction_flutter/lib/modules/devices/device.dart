@@ -18,6 +18,11 @@ abstract class Device {
   int get channelCount;
 
   ///
+  /// Channel to show by default (on graphs)
+  ///
+  List<bool> get channelToShowByDefault;
+
+  ///
   /// Whether the device is currently connected.
   bool _isConnected = false;
   bool get isConnected => _isConnected;

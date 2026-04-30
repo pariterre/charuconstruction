@@ -34,14 +34,21 @@ enum B24ResolutionConfiguration {
 
 class B24ForceSensor extends BleDevice {
   double _zeroOffset = 0.0;
+  double _scaling = 1.0;
+  double get scaling => _scaling;
 
   B24ForceSensor();
 
   @override
-  Future<void> connect({int? pinNumber, int maxRetries = 10}) {
+  Future<void> connect({
+    int? pinNumber,
+    int maxRetries = 10,
+    double scaling = 1.0,
+  }) {
     if (pinNumber == null) {
       throw ArgumentError('Pin number is required for B24ForceSensor');
     }
+    _scaling = scaling;
     return super.connect(pinNumber: pinNumber, maxRetries: maxRetries);
   }
 
@@ -100,13 +107,11 @@ class B24ForceSensor extends BleDevice {
 
   @override
   Future<void> setZero() async {
-    final int dataCount = data.length;
-    final lastDataList = data.getData()[0].sublist(
-      max(0, dataCount - 1000),
-      dataCount - 1,
-    );
-    final sum = lastDataList.fold(0.0, (prev, e) => prev + e);
-    _zeroOffset = sum / lastDataList.length;
+    // Keep only the last second of data
+    data.dropBefore(data.time.last - 1000);
+    // Perform on raw data => [0]
+    final sum = data.getData()[0].fold(0.0, (prev, e) => prev + e);
+    _zeroOffset = sum / data.length;
   }
 
   /// ---------------- CONFIGURATION ----------------
@@ -133,7 +138,10 @@ class B24ForceSensor extends BleDevice {
   /// Interface implementation
   ///
   @override
-  int get channelCount => 1;
+  int get channelCount => 2; // Raw, zeroed and scaled
+
+  @override
+  List<bool> get channelToShowByDefault => [false, true];
 
   @override
   String get deviceNamePrefix => 'B24';
@@ -180,8 +188,7 @@ class B24ForceSensor extends BleDevice {
     final timestamp = DateTime.now();
 
     double value = data.length == 4 ? BleDevice.unpackF32(data) : double.nan;
-    // TODO: Confirm we actually want to save the zeroed data
-    await pushData(timestamp, [value - _zeroOffset]);
+    await pushData(timestamp, [value, (value - _zeroOffset) * _scaling]);
   }
 
   void _onStatus(List<int> data) {

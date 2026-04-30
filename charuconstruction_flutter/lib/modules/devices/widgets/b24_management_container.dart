@@ -20,6 +20,7 @@ class _B24ManagementContainerState extends State<B24ManagementContainer> {
   String? _statusMessage;
   String? _errorMessage;
 
+  late double? _scaling = _device.scaling;
   int? _pinNumber;
 
   @override
@@ -28,6 +29,30 @@ class _B24ManagementContainerState extends State<B24ManagementContainer> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 20.0),
+            child: SizedBox(
+              width: 150,
+              child: TextFormField(
+                decoration: InputDecoration(labelText: 'Scaling'),
+                enabled: !_device.isConnected,
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                ],
+                initialValue: _scaling.toString(),
+                onChanged: (value) {
+                  _scaling = double.tryParse(value);
+
+                  _errorMessage = (_scaling ?? 0) < 0
+                      ? 'Invalid scaling'
+                      : null;
+                  setState(() {});
+                },
+              ),
+            ),
+          ),
+
           Padding(
             padding: const EdgeInsets.only(top: 20.0, bottom: 20.0),
             child: ElevatedButton(
@@ -169,7 +194,7 @@ class _B24ManagementContainerState extends State<B24ManagementContainer> {
     });
 
     try {
-      await _device.connect(pinNumber: _pinNumber);
+      await _device.connect(pinNumber: _pinNumber, scaling: _scaling ?? 1.0);
       _statusMessage = 'Connected to B24 Sensor: ${_device.name}';
     } on DeviceCouldNotConnect catch (e) {
       _statusMessage = 'Connection failed';

@@ -123,11 +123,14 @@ class WebcamReader implements MediaReader {
   WebcamResolution get resolution => _selectedResolution;
   WebcamFPS _selectedFPS = WebcamFPS.fps60;
   WebcamFPS get fps => _selectedFPS;
+  bool _hideVideo = false;
+  bool get hideVideo => _hideVideo;
 
   @override
   Future<void> initialize({
     WebcamResolution resolution = WebcamResolution.medium,
     WebcamFPS fps = WebcamFPS.fps60,
+    bool hideVideo = false,
   }) async {
     _availableCameras.addAll(await availableCameras());
     if (_availableCameras.isEmpty) {
@@ -136,6 +139,7 @@ class WebcamReader implements MediaReader {
 
     _selectedResolution = resolution;
     _selectedFPS = fps;
+    _hideVideo = hideVideo;
 
     webcamController = CameraController(
       _availableCameras.first,

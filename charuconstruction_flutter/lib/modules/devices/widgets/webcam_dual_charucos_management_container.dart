@@ -50,6 +50,7 @@ class _WebcamDualCharucosManagementContainerState
   bool _filterOutErrors = false;
   bool _showReconstructedCharucosOnFrame = true;
   bool _showOnGrayScale = false;
+  bool _hideVideo = false;
 
   @override
   void initState() {
@@ -78,6 +79,7 @@ class _WebcamDualCharucosManagementContainerState
       final webcamReader = _device.mediaReader as WebcamReader;
       _selectedResolution = webcamReader.resolution;
       _selectedFPS = webcamReader.fps;
+      _hideVideo = webcamReader.hideVideo;
     }
 
     final analyzers = isFirst
@@ -304,9 +306,26 @@ class _WebcamDualCharucosManagementContainerState
                 SizedBox(
                   width: 400,
                   child: CheckboxListTile(
-                    title: Text('Show reconstructed charucos on the frame'),
-                    value: _showReconstructedCharucosOnFrame,
+                    title: Text('Hide video'),
+                    value: _hideVideo,
                     enabled: _device.isNotConnected,
+                    onChanged: (value) {
+                      setState(() {
+                        _hideVideo = value!;
+                      });
+                    },
+                  ),
+                ),
+
+                SizedBox(height: 20),
+                SizedBox(
+                  width: 400,
+                  child: CheckboxListTile(
+                    title: Text('Show reconstructed charucos on the frame'),
+                    value: _hideVideo
+                        ? false
+                        : _showReconstructedCharucosOnFrame,
+                    enabled: !_hideVideo && _device.isNotConnected,
                     onChanged: (value) {
                       setState(() {
                         _showReconstructedCharucosOnFrame = value!;
@@ -321,7 +340,7 @@ class _WebcamDualCharucosManagementContainerState
                   child: CheckboxListTile(
                     title: Text('Show on grayscale frame'),
                     value: _showOnGrayScale,
-                    enabled: _device.isNotConnected,
+                    enabled: !_hideVideo && _device.isNotConnected,
                     onChanged: (value) {
                       setState(() {
                         _showOnGrayScale = value!;
@@ -444,8 +463,8 @@ class _WebcamDualCharucosManagementContainerState
           charucoBoards: charucos,
           camera: camera,
           ignoreReconstructionError: !_filterOutErrors,
-          showOnFrame: _showReconstructedCharucosOnFrame,
-          showOnGrayScale: _showOnGrayScale,
+          showOnFrame: _hideVideo ? false : _showReconstructedCharucosOnFrame,
+          showAsGrayscale: _showOnGrayScale,
         ),
       if (_selectedFrameAnalyser.contains(AvailableFrameAnalysers.videoSaver))
         VideoSaverAnalyser(outputPath: _videoOutputPath),
@@ -458,6 +477,7 @@ class _WebcamDualCharucosManagementContainerState
         analysers: analyzers,
         resolution: _selectedResolution,
         fps: _selectedFPS,
+        hideVideo: _hideVideo,
       );
       await _device.startReading();
       _statusMessage = 'Connected to the Charucos feed: ${_device.name}';

@@ -51,9 +51,9 @@ class WebcamDualCharucos extends WebcamCharucos {
     List<Charuco>? charucos,
     Camera? camera,
     List<FrameAnalyser> analysers = const [],
-
     WebcamResolution resolution = WebcamResolution.medium,
     WebcamFPS fps = WebcamFPS.fps60,
+    bool hideVideo = false,
   }) async {
     webcamReader = WebcamReader();
 
@@ -63,6 +63,7 @@ class WebcamDualCharucos extends WebcamCharucos {
       analysers: analysers,
       resolution: resolution,
       fps: fps,
+      hideVideo: hideVideo,
     );
   }
 
@@ -212,6 +213,7 @@ class MockedDualCharucos extends WebcamDualCharucos {
     List<FrameAnalyser> analysers = const [],
     WebcamResolution resolution = WebcamResolution.medium,
     WebcamFPS fps = WebcamFPS.fps60,
+    bool hideVideo = false,
   }) async {
     if (charucos == null) {
       throw ArgumentError(
@@ -232,6 +234,7 @@ class MockedDualCharucos extends WebcamDualCharucos {
       analysers: analysers,
       resolution: resolution,
       fps: fps,
+      hideVideo: hideVideo,
     );
 
     return output;

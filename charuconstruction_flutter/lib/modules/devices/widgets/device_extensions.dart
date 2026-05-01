@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 
 import '../charuco/charuco_device.dart';
+import '../charuco/media_reader.dart';
 import '../charuco/widgets/media_reader_container.dart';
 import '../concrete_devices/b24_force_sensor.dart';
 import '../device.dart';
@@ -16,7 +17,9 @@ extension DeviceExtensions on Device {
       WebcamCharucos dualCharucos => Column(
         children: [
           DeviceDataContainer(device: dualCharucos),
-          CameraFrameContainer(device: dualCharucos),
+          if ((dualCharucos.mediaReader is WebcamReader) &&
+              !(dualCharucos.mediaReader as WebcamReader).hideVideo)
+            CameraFrameContainer(device: dualCharucos),
         ],
       ),
       _ => Text('No data available for this device'),

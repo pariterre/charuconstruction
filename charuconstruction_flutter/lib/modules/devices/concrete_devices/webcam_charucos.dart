@@ -120,26 +120,9 @@ class WebcamDualCharucos extends WebcamCharucos {
     final rotationFirst = Matrix.fromFlattenedList(rotationFirstAsList, 3, 3);
     final rotationSecond = Matrix.fromFlattenedList(rotationSecondAsList, 3, 3);
 
-    // Compute SVD decomposition
-    final svdFirst = rotationFirst.decomposition.singularValueDecomposition();
-    final meanRotationFirst = svdFirst.U * svdFirst.V;
-    svdFirst.U *
-        Matrix.fromDiagonal([
-          1.0,
-          1.0,
-          -1.0 * (svdFirst.U * svdFirst.V).determinant(),
-        ]) *
-        svdFirst.V;
-
-    final svdSecond = rotationSecond.decomposition.singularValueDecomposition();
-    final meanRotationSecond =
-        svdSecond.U *
-        Matrix.fromDiagonal([1.0, 1.0, svdSecond.U * svdSecond.V]) *
-        svdSecond.V;
-
     // Setting them to null will make the next frame as the new zero
-    _transposedZeroRotationFirst = meanRotationFirst.transpose();
-    _transposedZeroRotationSecond = meanRotationSecond.transpose();
+    _transposedZeroRotationFirst = _orthogonalize(rotationFirst).transpose();
+    _transposedZeroRotationSecond = _orthogonalize(rotationSecond).transpose();
   }
 
   Future<void> _pushReconstructedCharucos({
@@ -187,6 +170,17 @@ class WebcamDualCharucos extends WebcamCharucos {
     pushData(now, [
       for (final val in output) val is Complex ? val.sign * val.magnitude : val,
     ]);
+  }
+}
+
+Matrix _orthogonalize(Matrix m) {
+  final svd = m.decomposition.singularValueDecomposition();
+
+  final orthogonal = svd.U * svd.V;
+  if (orthogonal.determinant() < 0) {
+    return svd.U * Matrix.fromDiagonal([1.0, 1.0, -1.0]) * svd.V;
+  } else {
+    return orthogonal;
   }
 }
 

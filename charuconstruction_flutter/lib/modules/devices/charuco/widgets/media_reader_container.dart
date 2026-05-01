@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../charuco_device.dart';
 import '../frame.dart';
+import '../frame_analyser.dart';
 
 class CameraFrameContainer extends StatefulWidget {
   const CameraFrameContainer({super.key, required this.device});
@@ -30,9 +31,18 @@ class _CameraFrameContainerState extends State<CameraFrameContainer> {
   }
 
   void _onNewFrame(Frame? frame) {
+    final analysers = widget.device.analysers is FrameAnalyserPipeline
+        ? (widget.device.analysers as FrameAnalyserPipeline).analysers
+        : [widget.device.analysers!];
+
+    bool graysclale = false;
+    for (final analyser in analysers) {
+      if (analyser is! ReconstructCharucoFrameAnalyser) continue;
+      graysclale = analyser.showOnGrayScale;
+    }
     if (!mounted) return;
     setState(() {
-      _lastFrameBytes = frame?.toBytes(grayscale: true);
+      _lastFrameBytes = frame?.toBytes(grayscale: graysclale);
     });
   }
 

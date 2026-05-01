@@ -288,7 +288,8 @@ class _WebcamDualCharucosManagementContainerState
                   width: 400,
                   child: CheckboxListTile(
                     title: Text(
-                      'Reduce reconstruction error by filtering out detections with high reprojection error (slower)',
+                      'Reduce reconstruction error by filtering out detections with '
+                      'high reprojection error (slower)',
                     ),
                     value: _reduceReconstructionError,
                     enabled: _device.isNotConnected,
@@ -299,6 +300,7 @@ class _WebcamDualCharucosManagementContainerState
                     },
                   ),
                 ),
+
                 SizedBox(height: 20),
                 SizedBox(
                   width: 400,
@@ -309,6 +311,21 @@ class _WebcamDualCharucosManagementContainerState
                     onChanged: (value) {
                       setState(() {
                         _showReconstructedCharucosOnFrame = value!;
+                      });
+                    },
+                  ),
+                ),
+
+                SizedBox(height: 20),
+                SizedBox(
+                  width: 400,
+                  child: CheckboxListTile(
+                    title: Text('Show on grayscale frame'),
+                    value: _showOnGrayScale,
+                    enabled: _device.isNotConnected,
+                    onChanged: (value) {
+                      setState(() {
+                        _showOnGrayScale = value!;
                       });
                     },
                   ),
@@ -429,6 +446,7 @@ class _WebcamDualCharucosManagementContainerState
           camera: camera,
           ignoreReconstructionError: _reduceReconstructionError,
           showOnFrame: _showReconstructedCharucosOnFrame,
+          showOnGrayScale: _showOnGrayScale,
         ),
       if (_selectedFrameAnalyser.contains(AvailableFrameAnalysers.videoSaver))
         VideoSaverAnalyser(outputPath: _videoOutputPath),

@@ -6,6 +6,8 @@ import 'charuco.dart';
 import 'extensions.dart';
 import 'frame.dart';
 
+// TODO: Add an analyser for offline
+
 enum AvailableFrameAnalysers {
   reconstructCharuco,
   videoSaver;

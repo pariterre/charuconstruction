@@ -3,13 +3,13 @@ import 'package:opencv_dart/opencv_dart.dart';
 
 enum CameraModels {
   pixel2,
-  ios;
+  iPadPro2016;
 
   @override
   String toString() {
     return switch (this) {
       CameraModels.pixel2 => 'pixel2',
-      CameraModels.ios => 'ios',
+      CameraModels.iPadPro2016 => 'iPadPro2016',
     };
   }
 
@@ -28,13 +28,13 @@ enum CameraModels {
         useVideoParameters: useVideoParameters,
         isPortrait: isPortrait,
       ),
-      CameraModels.ios => Camera.fromPhone(
+      CameraModels.iPadPro2016 => Camera.fromPhone(
         name: toString(),
-        focalLength: 3.4,
-        pixelSize: 0.0014,
-        sensorWidth: 4032.0,
-        sensorHeight: 3024.0 * 0.75,
-        distorsionCoefficients: const [-0.05, 0.02, 0.0, 0.0, 0.0],
+        focalLength: 3.9, // mm (derived from ~29mm equiv)
+        pixelSize: 0.00122, // mm (1.22 µm pixels)
+        sensorWidth: 4032 * 0.00122, // ≈ 4.92 mm
+        sensorHeight: 3024 * 0.00122, // ≈ 3.69 mm
+        distorsionCoefficients: const [0.0, 0.0, 0.0, 0.0, 0.0],
         useVideoParameters: useVideoParameters,
         isPortrait: isPortrait,
       ),

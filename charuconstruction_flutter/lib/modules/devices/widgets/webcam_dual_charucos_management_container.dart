@@ -40,7 +40,7 @@ class _WebcamDualCharucosManagementContainerState
 
   final List<String> _selectedCharucos = [];
   CameraModels _selectedCamera = Platform.isIOS
-      ? CameraModels.ios
+      ? CameraModels.iPadPro2016
       : CameraModels.pixel2;
   late final Set<AvailableFrameAnalysers> _selectedFrameAnalyser;
 

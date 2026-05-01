@@ -122,9 +122,13 @@ class WebcamDualCharucos extends WebcamCharucos {
 
     // Compute SVD decomposition
     final svdFirst = rotationFirst.decomposition.singularValueDecomposition();
-    final meanRotationFirst =
-        svdFirst.U *
-        Matrix.fromDiagonal([1.0, 1.0, svdFirst.U * svdFirst.V]) *
+    final meanRotationFirst = svdFirst.U * svdFirst.V;
+    svdFirst.U *
+        Matrix.fromDiagonal([
+          1.0,
+          1.0,
+          -1.0 * (svdFirst.U * svdFirst.V).determinant(),
+        ]) *
         svdFirst.V;
 
     final svdSecond = rotationSecond.decomposition.singularValueDecomposition();

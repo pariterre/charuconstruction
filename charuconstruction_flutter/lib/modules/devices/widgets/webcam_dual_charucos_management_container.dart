@@ -47,7 +47,9 @@ class _WebcamDualCharucosManagementContainerState
   bool _isPortrait = false;
   WebcamResolution _selectedResolution = WebcamResolution.medium;
   WebcamFPS _selectedFPS = WebcamFPS.fps60;
+  bool _reduceReconstructionError = false;
   bool _showReconstructedCharucosOnFrame = true;
+  bool _showOnGrayScale = false;
 
   @override
   void initState() {
@@ -104,7 +106,10 @@ class _WebcamDualCharucosManagementContainerState
             )
             as ReconstructCharucoFrameAnalyser?;
     if (reconstructAnalyser != null) {
+      _reduceReconstructionError =
+          !reconstructAnalyser.ignoreReconstructionError;
       _showReconstructedCharucosOnFrame = reconstructAnalyser.showOnFrame;
+      _showOnGrayScale = reconstructAnalyser.showOnGrayScale;
     }
 
     _selectedCharucos.addAll(
@@ -277,18 +282,38 @@ class _WebcamDualCharucosManagementContainerState
           if (_selectedFrameAnalyser.contains(
             AvailableFrameAnalysers.reconstructCharuco,
           ))
-            SizedBox(
-              width: 400,
-              child: CheckboxListTile(
-                title: Text('Show reconstructed charucos on the frame'),
-                value: _showReconstructedCharucosOnFrame,
-                enabled: _device.isNotConnected,
-                onChanged: (value) {
-                  setState(() {
-                    _showReconstructedCharucosOnFrame = value!;
-                  });
-                },
-              ),
+            Column(
+              children: [
+                SizedBox(
+                  width: 400,
+                  child: CheckboxListTile(
+                    title: Text(
+                      'Reduce reconstruction error by filtering out detections with high reprojection error (slower)',
+                    ),
+                    value: _reduceReconstructionError,
+                    enabled: _device.isNotConnected,
+                    onChanged: (value) {
+                      setState(() {
+                        _reduceReconstructionError = value!;
+                      });
+                    },
+                  ),
+                ),
+                SizedBox(height: 20),
+                SizedBox(
+                  width: 400,
+                  child: CheckboxListTile(
+                    title: Text('Show reconstructed charucos on the frame'),
+                    value: _showReconstructedCharucosOnFrame,
+                    enabled: _device.isNotConnected,
+                    onChanged: (value) {
+                      setState(() {
+                        _showReconstructedCharucosOnFrame = value!;
+                      });
+                    },
+                  ),
+                ),
+              ],
             ),
 
           SizedBox(height: 20),
@@ -402,7 +427,7 @@ class _WebcamDualCharucosManagementContainerState
         ReconstructCharucoFrameAnalyser(
           charucoBoards: charucos,
           camera: camera,
-          ignoreReconstructionError: true,
+          ignoreReconstructionError: _reduceReconstructionError,
           showOnFrame: _showReconstructedCharucosOnFrame,
         ),
       if (_selectedFrameAnalyser.contains(AvailableFrameAnalysers.videoSaver))

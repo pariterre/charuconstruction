@@ -77,7 +77,7 @@ class ReconstructCharucoFrameAnalyser extends FrameAnalyser {
         }
 
         drawFrameAxes(
-          frame.get(),
+          frame.get(grayscale: true),
           camera.matrixAsMat,
           camera.distorsionCoefficientsAsMat,
           rotation,

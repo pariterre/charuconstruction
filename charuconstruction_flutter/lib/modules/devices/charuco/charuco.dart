@@ -215,7 +215,7 @@ class Charuco {
     // Reproject the corners that are seen on the image to compute the reprojection error and filter out bad detections
 
     // Compute the reprojection error in pixels
-    if (!ignoreReconstructionError) {
+    if (!ignoreReconstructionError || true) {
       final visibleCorners = board.chessboardCorners
           .toList()
           .asMap()

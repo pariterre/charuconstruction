@@ -32,7 +32,7 @@ class _CameraFrameContainerState extends State<CameraFrameContainer> {
   void _onNewFrame(Frame? frame) {
     if (!mounted) return;
     setState(() {
-      _lastFrameBytes = frame?.toBytes();
+      _lastFrameBytes = frame?.toBytes(grayscale: true);
     });
   }
 

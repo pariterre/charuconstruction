@@ -39,14 +39,14 @@ class ReconstructCharucoFrameAnalyser extends FrameAnalyser {
   final Camera camera;
   final bool ignoreReconstructionError;
   final bool showOnFrame;
-  final bool showOnGrayScale;
+  final bool showAsGrayscale;
 
   ReconstructCharucoFrameAnalyser({
     required this.charucoBoards,
     required this.camera,
     this.ignoreReconstructionError = false,
     this.showOnFrame = true,
-    this.showOnGrayScale = false,
+    this.showAsGrayscale = false,
   });
 
   @override
@@ -79,7 +79,7 @@ class ReconstructCharucoFrameAnalyser extends FrameAnalyser {
         }
 
         drawFrameAxes(
-          frame.get(grayscale: showOnGrayScale),
+          frame.get(grayscale: showAsGrayscale),
           camera.matrixAsMat,
           camera.distorsionCoefficientsAsMat,
           rotation,

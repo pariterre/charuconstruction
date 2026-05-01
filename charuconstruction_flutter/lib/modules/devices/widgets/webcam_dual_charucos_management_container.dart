@@ -47,7 +47,7 @@ class _WebcamDualCharucosManagementContainerState
   bool _isPortrait = false;
   WebcamResolution _selectedResolution = WebcamResolution.medium;
   WebcamFPS _selectedFPS = WebcamFPS.fps60;
-  bool _reduceReconstructionError = false;
+  bool _filterOutErrors = false;
   bool _showReconstructedCharucosOnFrame = true;
   bool _showOnGrayScale = false;
 
@@ -106,10 +106,9 @@ class _WebcamDualCharucosManagementContainerState
             )
             as ReconstructCharucoFrameAnalyser?;
     if (reconstructAnalyser != null) {
-      _reduceReconstructionError =
-          !reconstructAnalyser.ignoreReconstructionError;
+      _filterOutErrors = !reconstructAnalyser.ignoreReconstructionError;
       _showReconstructedCharucosOnFrame = reconstructAnalyser.showOnFrame;
-      _showOnGrayScale = reconstructAnalyser.showOnGrayScale;
+      _showOnGrayScale = reconstructAnalyser.showAsGrayscale;
     }
 
     _selectedCharucos.addAll(
@@ -291,11 +290,11 @@ class _WebcamDualCharucosManagementContainerState
                       'Reduce reconstruction error by filtering out detections with '
                       'high reprojection error (slower)',
                     ),
-                    value: _reduceReconstructionError,
+                    value: _filterOutErrors,
                     enabled: _device.isNotConnected,
                     onChanged: (value) {
                       setState(() {
-                        _reduceReconstructionError = value!;
+                        _filterOutErrors = value!;
                       });
                     },
                   ),
@@ -444,7 +443,7 @@ class _WebcamDualCharucosManagementContainerState
         ReconstructCharucoFrameAnalyser(
           charucoBoards: charucos,
           camera: camera,
-          ignoreReconstructionError: _reduceReconstructionError,
+          ignoreReconstructionError: !_filterOutErrors,
           showOnFrame: _showReconstructedCharucosOnFrame,
           showOnGrayScale: _showOnGrayScale,
         ),

@@ -38,7 +38,7 @@ class _CameraFrameContainerState extends State<CameraFrameContainer> {
     bool graysclale = false;
     for (final analyser in analysers) {
       if (analyser is! ReconstructCharucoFrameAnalyser) continue;
-      graysclale = analyser.showOnGrayScale;
+      graysclale = analyser.showAsGrayscale;
     }
     if (!mounted) return;
     setState(() {

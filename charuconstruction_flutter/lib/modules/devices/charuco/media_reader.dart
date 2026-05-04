@@ -245,7 +245,7 @@ class WebcamReader implements MediaReader {
   }
 }
 
-class CharucoMockReader implements MediaReader {
+class CharucoMockWebcamReader extends WebcamReader {
   ///
   /// The list of Charuco boards to simulate. Each board will be transformed according to the provided transformations.
   ///
@@ -266,17 +266,27 @@ class CharucoMockReader implements MediaReader {
   ///
   final Camera camera;
 
-  CharucoMockReader({
+  CharucoMockWebcamReader({
     required this.charucos,
     required this.camera,
     required this.transformations,
   });
 
   @override
-  Future<void> initialize() async {}
+  Future<void> initialize({
+    WebcamResolution resolution = WebcamResolution.medium,
+    WebcamFPS fps = WebcamFPS.fps60,
+    bool hideVideo = false,
+  }) async {
+    _selectedResolution = resolution;
+    _selectedFPS = fps;
+    _hideVideo = hideVideo;
+  }
 
   @override
-  Future<void> startReading() async {}
+  Future<void> startReading({bool isPortrait = true}) async {
+    _isPortrait = isPortrait;
+  }
 
   @override
   Future<void> stopReading() async {
@@ -348,9 +358,9 @@ class CharucoMockReader implements MediaReader {
     final pixelTranslation = translation * camera.focalLength;
 
     // Drop the third column of rotation and concatenate the translation
-    final projectionMatrix = rotation.removeColumn(2).insertColumn(2, [
-      pixelTranslation,
-    ]);
+    final projectionMatrix = rotation
+        .removeColumn(2)
+        .insertColumn(2, pixelTranslation.toList());
 
     // Remove the third column of the transformation to get a 3x4 matrix for projection
     final hMatrix = camera.matrixAsLinalg * projectionMatrix;

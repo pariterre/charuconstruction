@@ -30,14 +30,19 @@ abstract class Device {
   bool get isNotConnected => isDisconnected;
 
   ///
-  /// Whether the device is in reading mode.
-  bool _isReading = false;
-  bool get isReading => _isReading;
-  bool get isNotReading => !isReading;
+  /// Whether the device is in recording mode.
+  bool _isRecording = false;
+  bool get isRecording => _isRecording;
+  bool get isNotRecording => !isRecording;
 
   ///
   /// Data holder for the current device
   late final data = TimeSeriesData(
+    channelCount: channelCount,
+    isFromLiveData: true,
+    maxSize: 200,
+  );
+  late final recordingData = TimeSeriesData(
     channelCount: channelCount,
     isFromLiveData: true,
   );
@@ -63,7 +68,7 @@ abstract class Device {
   ///
   Future<void> disconnect() async {
     try {
-      await stopReading();
+      await stopRecording();
     } catch (e) {
       throw DeviceCouldNotDisconnect('Failed to disconnect: $e');
     }
@@ -81,37 +86,43 @@ abstract class Device {
   /// Start reading data from the device. The device should be configured to send data at this point.
   /// The user must have subscribed to the [onNewData] stream before calling this method, otherwise the data will be lost.
   ///
-  Future<void> startReading() async {
+  Future<void> startRecording({DateTime? startingTime}) async {
     if (isNotConnected) {
       throw DeviceNotConnected(
-        'Cannot start reading: device is not connected, call connect() to the device first.',
+        'Cannot start recording: device is not connected, call connect() to the device first.',
       );
     }
 
-    _isReading = true;
-    onReadingStatusChanged.notifyListeners((listener) => listener(isReading));
+    startingTime ??= DateTime.now();
+    data.clear(timeOffset: startingTime);
+    recordingData.clear(timeOffset: startingTime);
+
+    _isRecording = true;
+    onReadingStatusChanged.notifyListeners((listener) => listener(isRecording));
     _logger.info('Reading data!');
   }
 
   ///
   /// Stop reading data from the device.
   ///
-  Future<void> stopReading() async {
+  Future<void> stopRecording() async {
     if (isNotConnected) {
       throw DeviceNotConnected('Cannot stop reading: device is not connected.');
     }
 
-    _isReading = false;
-    onReadingStatusChanged.notifyListeners((listener) => listener(isReading));
-    _logger.info('Stopped reading data!');
+    _isRecording = false;
+    onReadingStatusChanged.notifyListeners((listener) => listener(isRecording));
+    _logger.info('Stopped recording data!');
   }
 
   void clearData({required DateTime? timeOffset}) {
     data.clear(timeOffset: timeOffset);
+    recordingData.clear(timeOffset: timeOffset);
   }
 
   ///
-  /// Set the current data as the zero of the device.
+  /// Set the current data as the zero of the device. It takes the full data
+  /// vector into account. Therefore, clear data should be called before setting the zero
   ///
   Future<void> setZero();
 
@@ -119,13 +130,12 @@ abstract class Device {
   /// The data vector of the data received from the device. This method is expected
   /// to be called by the device implementation when new data is received.
   /// [timestamp] is the timestamp of the data
-  /// [values] is the list of values of the data, in the same order as the channels of the device
+  /// [channels] is the list of values of the data, in the same order as the channels of the device
   ///
-  Future<void> pushData(DateTime timestamp, List<double> values) async {
-    data.appendFromJson({
-      'data': [
-        [timestamp.millisecondsSinceEpoch, values],
-      ],
-    });
+  Future<void> pushData(DateTime timestamp, List<double> channels) async {
+    data.add([timestamp.millisecondsSinceEpoch], [channels]);
+    if (_isRecording) {
+      recordingData.add([timestamp.millisecondsSinceEpoch], [channels]);
+    }
   }
 }

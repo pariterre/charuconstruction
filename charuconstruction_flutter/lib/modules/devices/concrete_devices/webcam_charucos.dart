@@ -95,9 +95,6 @@ class WebcamDualCharucos extends WebcamCharucos {
 
   @override
   Future<void> setZero() async {
-    // Keep only the last second of data
-    data.dropBefore(data.time.last - 1000);
-
     // Aliases
     final frames = data.getData();
     final frameCount = data.length;
@@ -195,7 +192,7 @@ class MockedDualCharucos extends WebcamDualCharucos {
     if (reader == null) {
       super.webcamReader = null;
     } else {
-      _webcamReader = CharucoMockReader(
+      _webcamReader = CharucoMockWebcamReader(
         camera: _internalCamera!,
         charucos: _internalCharucos!,
         transformations: Stream.periodic(
@@ -251,9 +248,9 @@ class MockedDualCharucos extends WebcamDualCharucos {
     for (int i = 0; i < (charucos.length); i++) {
       data.add((
         Vector.fromList([
-          -2.0 + i * 4.0,
-          0.0,
-          4.5 + 0.5 * sin(0.1 * (value + i * 20.0)),
+          Complex(-2.0 + i * 4.0),
+          Complex(0.0),
+          Complex(4.5 + 0.5 * sin(0.1 * (value + i * 20.0))),
         ]),
         MatrixExtensions.fromEuler([
           (30.0 * sin(0.005 * (3.0 * value + i * 20.0)), CharucoAxis.x),

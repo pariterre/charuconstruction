@@ -17,7 +17,11 @@ extension MatrixExtensions on Matrix {
     rowCount,
     columnCount,
     MatType(MatType.CV_32F),
-    toList().map((e) => e.toList()).expand((i) => i).toList().cast<double>(),
+    toList()
+        .map((e) => e.toList())
+        .expand((i) => i.map((e) => e.toDouble()))
+        .toList()
+        .cast<double>(),
   );
 
   static Matrix fromEuler(

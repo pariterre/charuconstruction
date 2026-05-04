@@ -7,6 +7,7 @@
 
 import 'dart:io';
 
+import 'package:charuconstruction_flutter/modules/data/rolling_vector.dart';
 import 'package:charuconstruction_flutter/utils/generic_listener.dart';
 
 class TimeSeriesData {
@@ -18,9 +19,9 @@ class TimeSeriesData {
   final int _channelCount;
   int get channelCount => _channelCount;
 
-  final List<int> time = []; // In milliseconds since t0
-  final List<List<double>> _data;
-  List<List<double>> getData() => _data;
+  final RollingVector<int> time; // In milliseconds since t0
+  final List<RollingVector<double>> _data;
+  List<RollingVector<double>> getData() => _data;
 
   final onNewData = GenericListener<Function()>();
 
@@ -42,9 +43,16 @@ class TimeSeriesData {
   bool get isEmpty => time.isEmpty;
   bool get isNotEmpty => time.isNotEmpty;
 
-  TimeSeriesData({required int channelCount, required this.isFromLiveData})
-    : _channelCount = channelCount,
-      _data = List.generate(channelCount, (_) => <double>[]);
+  TimeSeriesData({
+    required int channelCount,
+    required this.isFromLiveData,
+    int maxSize = -1,
+  }) : _channelCount = channelCount,
+       _data = List.generate(
+         channelCount,
+         (_) => RollingVector<double>(maxSize),
+       ),
+       time = RollingVector<int>(maxSize);
 
   ///
   /// Append data from a JSON object, the JSON object should be in the format of:
@@ -58,16 +66,20 @@ class TimeSeriesData {
   /// Where time is in milliseconds since the initial time of the data, and the
   /// channel values are floats in the same order as the channels of the device.
   ///
-  int appendFromJson(Map<String, dynamic> json) {
-    final timeSeries = (json['data'] as List<dynamic>);
+  void add(List<int> timestamp, List<List<double>> channels) {
+    if (timestamp.isEmpty) return;
+    if (timestamp.length != channels.length) {
+      throw Exception(
+        'The length of the timestamp list must be the same as the length of the channels list.',
+      );
+    }
 
     // If this is the first time stamps, we need to set the time offset
-    if (timeSeries.isEmpty) return -1;
     bool isNew = time.isEmpty;
-    _timeOffset ??= isFromLiveData ? timeSeries.last[0] : timeSeries.first[0];
+    _timeOffset ??= isFromLiveData ? timestamp.last : timestamp.first;
 
-    final maxLength = timeSeries.length;
-    final newT = timeSeries.map((e) => (e[0] as int) - _timeOffset!).toList();
+    final maxLength = timestamp.length;
+    final newT = timestamp.map((e) => e - _timeOffset!).toList();
 
     // Find the first index where the new time is larger than the last time of t
     int firstNewIndex = isNew
@@ -79,14 +91,13 @@ class TimeSeriesData {
     // Parse the data for each channel
     for (int channelIndex = 0; channelIndex < channelCount; channelIndex++) {
       _data[channelIndex].addAll(
-        timeSeries
+        channels
             .getRange(firstNewIndex, maxLength)
-            .map<double>((e) => e[1][channelIndex]),
+            .map<double>((e) => e[channelIndex]),
       );
     }
 
     onNewData.notifyListeners((callback) => callback());
-    return time.length - (maxLength - firstNewIndex);
   }
 
   Future<void> toFile(String path, {bool raw = false}) async {
@@ -110,39 +121,5 @@ class TimeSeriesData {
     sink.write(buffer.toString());
     await sink.flush();
     await sink.close();
-  }
-
-  ///
-  /// Keep data that are after [lastTimeStepToKeep] (in milliseconds)
-  int dropBefore(int lastTimeStepToKeep) {
-    if (time.isEmpty) return 0;
-
-    final firstIndexToKeep = time.indexWhere(
-      (value) => value >= lastTimeStepToKeep,
-    );
-    if (firstIndexToKeep == -1) {
-      // If we get to the end, we should drop everything
-      clear(timeOffset: null);
-    } else {
-      time.removeRange(0, firstIndexToKeep);
-      for (var channel in _data) {
-        channel.removeRange(0, firstIndexToKeep);
-      }
-    }
-    return firstIndexToKeep;
-  }
-
-  int dropAfter(double elapsedTime) {
-    if (time.isEmpty) return 0;
-
-    final lastIndexToKeep = time.indexWhere((value) => value >= elapsedTime);
-    // If we get to the end, we should keep everything, otherwise drop from lastIndexToKeep
-    if (lastIndexToKeep != -1) {
-      time.removeRange(lastIndexToKeep, time.length);
-      for (var channel in _data) {
-        channel.removeRange(lastIndexToKeep, channel.length);
-      }
-    }
-    return lastIndexToKeep;
   }
 }

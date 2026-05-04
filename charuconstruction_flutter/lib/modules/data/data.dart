@@ -7,7 +7,6 @@
 
 import 'dart:io';
 
-import 'package:collection/collection.dart';
 import 'package:logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -71,60 +70,6 @@ class Data {
     }
 
     if (!keepDevices) _devices.clear();
-  }
-
-  ///
-  /// Append data from a JSON object, the JSON object should be in the format of:
-  /// {
-  ///   "device_name": {
-  ///     "name": "device_name",
-  ///     "data": [
-  ///       [time, channel_1_value, channel_2_value, ...],
-  ///       [time, channel_1_value, channel_2_value, ...],
-  ///       ...
-  ///     ]
-  ///   }
-  /// }
-  /// The time should be in milliseconds since the initial time of the data, and
-  /// the channel values should be in the same order as the channels of the device
-  void appendFromJson(Map<String, dynamic> json) {
-    for (final data in json.values) {
-      final key = _devices.keys.firstWhereOrNull(
-        (device) => device == data['name'],
-      );
-      if (key == null) {
-        throw Exception(
-          'Device with name ${data['name']} not found in devices list.',
-        );
-      }
-
-      _devices[key]!.appendFromJson(data['data'] as Map<String, dynamic>);
-    }
-  }
-
-  ///
-  /// Drop data before a certain time, the time should be in the same format as
-  /// the time vector of the devices (milliseconds since the initial time of the data)
-  ///
-  void dropBefore(DateTime t) {
-    for (final device in _devices.values) {
-      device.dropBefore(
-        t.millisecondsSinceEpoch - initialTime.millisecondsSinceEpoch,
-      );
-    }
-  }
-
-  ///
-  /// Drop data after a certain time, the time should be in the same format as
-  /// the time vector of the devices (milliseconds since the initial time of the data)
-  ///
-  void dropAfter(DateTime t) {
-    for (final device in _devices.values) {
-      device.dropAfter(
-        (t.millisecondsSinceEpoch - initialTime.millisecondsSinceEpoch)
-            .toDouble(),
-      );
-    }
   }
 
   ///

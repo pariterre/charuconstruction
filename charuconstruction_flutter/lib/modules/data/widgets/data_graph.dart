@@ -66,7 +66,7 @@ class _DataGraphState extends State<DataGraph> {
               (channel == null && _showChannels[e.key])
           ? LineChartBarData(
               color: Colors.black,
-              spots: e.value
+              spots: e.value.values
                   .asMap()
                   .entries
                   .map((entry) => FlSpot(time[entry.key] / 1000.0, entry.value))

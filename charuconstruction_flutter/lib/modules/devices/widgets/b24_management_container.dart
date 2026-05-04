@@ -112,35 +112,11 @@ class _B24ManagementContainerState extends State<B24ManagementContainer> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Status: ${_device.isConnected ? 'Connected' : 'Not Connected'} and ${_device.isReading ? 'Reading' : 'Not Reading'}',
+                  'Status: ${_device.isConnected ? 'Connected' : 'Not Connected'} and ${_device.isRecording ? 'Recording' : 'Not Recording'}',
                 ),
                 if (_statusMessage != null) Text(_statusMessage!),
                 if (_errorMessage != null)
                   Text(_errorMessage!, style: TextStyle(color: Colors.red)),
-              ],
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.only(bottom: 20.0),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ElevatedButton(
-                  onPressed:
-                      _isBusy || _device.isNotConnected || _device.isReading
-                      ? null
-                      : _startReading,
-                  child: Text('Start Reading'),
-                ),
-                SizedBox(width: 20),
-                ElevatedButton(
-                  onPressed:
-                      _isBusy || _device.isNotConnected || _device.isNotReading
-                      ? null
-                      : _stopReading,
-                  child: Text('Stop Reading'),
-                ),
               ],
             ),
           ),
@@ -218,6 +194,12 @@ class _B24ManagementContainerState extends State<B24ManagementContainer> {
     });
 
     try {
+      await _device.stopRecording();
+    } on Exception {
+      // If stopping recording fails, we still want to try to disconnect, so we catch the error but don't rethrow it
+    }
+
+    try {
       await _device.disconnect();
       _statusMessage = 'Disconnected from B24 Sensor: ${_device.name}';
     } on DeviceCouldNotDisconnect catch (e) {
@@ -225,54 +207,6 @@ class _B24ManagementContainerState extends State<B24ManagementContainer> {
       _errorMessage = e.toString();
     } catch (e) {
       _statusMessage = 'Disconnection failed';
-      _errorMessage = 'An unexpected error occurred: $e';
-    }
-
-    if (!mounted) return;
-    setState(() {
-      _isBusy = false;
-    });
-  }
-
-  Future<void> _startReading() async {
-    setState(() {
-      _isBusy = true;
-      _statusMessage = 'Starting to read from B24 Sensor...';
-      _errorMessage = null;
-    });
-
-    try {
-      await _device.startReading();
-      _statusMessage = 'Started reading from B24 Sensor: ${_device.name}';
-    } on DeviceNotConnected catch (e) {
-      _statusMessage = 'Start reading failed';
-      _errorMessage = e.toString();
-    } catch (e) {
-      _statusMessage = 'Start reading failed';
-      _errorMessage = 'An unexpected error occurred: $e';
-    }
-
-    if (!mounted) return;
-    setState(() {
-      _isBusy = false;
-    });
-  }
-
-  Future<void> _stopReading() async {
-    setState(() {
-      _isBusy = true;
-      _statusMessage = 'Stopping reading from B24 Sensor...';
-      _errorMessage = null;
-    });
-
-    try {
-      await _device.stopReading();
-      _statusMessage = 'Stopped reading from B24 Sensor: ${_device.name}';
-    } on DeviceNotConnected catch (e) {
-      _statusMessage = 'Stop reading failed';
-      _errorMessage = e.toString();
-    } catch (e) {
-      _statusMessage = 'Stop reading failed';
       _errorMessage = 'An unexpected error occurred: $e';
     }
 

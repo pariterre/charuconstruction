@@ -56,40 +56,41 @@ class B24ForceSensor extends BleDevice {
   /// Reimplement startReading and stopReading to change the sampling rate on the fly
   ///
   @override
-  Future<void> startReading() async {
+  Future<void> startRecording({DateTime? startingTime}) async {
+    if (isRecording) return;
+
     // Put the sensor in fast mode
-    if (!isReading) {
+    if (!isRecording) {
       await configureResolution(B24ResolutionConfiguration.maximum);
       await configureDataRate(B24SampleRateConfiguration.fastest);
     }
 
-    return super.startReading();
+    return super.startRecording(startingTime: startingTime);
   }
 
   @override
-  Future<void> stopReading() async {
-    if (isReading) {
-      try {
-        // Put the sensor in low power mode
-        await configureResolution(B24ResolutionConfiguration.batterySaver);
-        await configureDataRate(B24SampleRateConfiguration.batterySaver);
-      } catch (e) {
-        _logger.warning(
-          'Failed to configure sensor for low power mode: $e. Trying to stop reading anyway.',
-        );
-      }
-    }
+  Future<void> stopRecording() async {
+    if (isNotRecording) return;
 
-    return super.stopReading();
+    try {
+      // Put the sensor in low power mode
+      await configureResolution(B24ResolutionConfiguration.batterySaver);
+      await configureDataRate(B24SampleRateConfiguration.batterySaver);
+    } catch (e) {
+      _logger.warning(
+        'Failed to configure sensor for low power mode: $e. Trying to stop recording anyway.',
+      );
+    }
+    return super.stopRecording();
   }
 
   @override
   Future<void> disconnect() async {
     try {
-      await stopReading();
+      await stopRecording();
     } catch (e) {
       _logger.warning(
-        'Failed to stop reading before disconnecting: $e. Trying to disconnect anyway.',
+        'Failed to stop recording before disconnecting: $e. Trying to disconnect anyway.',
       );
     }
 
@@ -107,11 +108,7 @@ class B24ForceSensor extends BleDevice {
 
   @override
   Future<void> setZero() async {
-    // Keep only the last second of data
-    data.dropBefore(data.time.last - 1000);
-    // Perform on raw data => [0]
-    final sum = data.getData()[0].fold(0.0, (prev, e) => prev + e);
-    _zeroOffset = sum / data.length;
+    _zeroOffset = data.getData()[0].average; // Perform on raw data => [0]
   }
 
   /// ---------------- CONFIGURATION ----------------
@@ -273,7 +270,7 @@ class B24MockCharuconstructionBleDevice extends UniversalBleDeviceInterface {
 
   StreamController<Uint8List>? _controller;
   Timer? _timer;
-  Duration _currentPeriod = Duration(milliseconds: 100);
+  Duration _currentPeriod = Duration(milliseconds: 5000);
 
   Stream<Uint8List> get _mockValueStream {
     _controller ??= StreamController<Uint8List>.broadcast(

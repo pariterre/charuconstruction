@@ -94,16 +94,6 @@ abstract class WebcamCharucos extends CharucoDevice {
     } else {
       await mediaReader!.initialize();
     }
-    _analysers = FrameAnalyserPipeline(analysers: analysers);
-
-    return output;
-  }
-
-  @override
-  Future<void> startReading() async {
-    if (mediaReader == null) {
-      throw StateError('MediaReader must be initialized to start reading');
-    }
 
     if (mediaReader is WebcamReader) {
       await (mediaReader as WebcamReader).startReading(
@@ -112,34 +102,47 @@ abstract class WebcamCharucos extends CharucoDevice {
     } else {
       await mediaReader!.startReading();
     }
-
     _frameSubscription = mediaReader!.readFrames().listen(
       (frame) => pushDataFrame(frame),
       onDone: () => _logger.info('Finished reading frames'),
       onError: (error) => _logger.severe('Error reading frames: $error'),
     );
 
-    return await super.startReading();
+    _analysers = FrameAnalyserPipeline(analysers: analysers);
+
+    return output;
   }
 
   @override
-  Future<void> stopReading() async {
-    _frameSubscription?.cancel();
-    _frameSubscription = null;
-    await mediaReader?.stopReading();
-    return await super.stopReading();
+  Future<void> startRecording({DateTime? startingTime}) async {
+    if (isRecording) return;
+
+    return await super.startRecording(startingTime: startingTime);
+  }
+
+  @override
+  Future<void> stopRecording() async {
+    if (isNotRecording) return;
+
+    return await super.stopRecording();
   }
 
   @override
   Future<void> disconnect() async {
+    _frameSubscription?.cancel();
+    _frameSubscription = null;
+
+    await mediaReader?.stopReading();
     await mediaReader?.dispose();
+
     return await super.disconnect();
   }
 
   Future<(Frame?, Map<AvailableExtraAnalyses, dynamic>? extraAnalyses)>
   pushDataFrame(Frame? frame) async {
-    final (analysedFrame, extraAnalyses) =
-        await _analysers?.perform(frame) ?? (null, null);
+    final (analysedFrame, extraAnalyses) = isRecording
+        ? await _analysers?.perform(frame) ?? (null, null)
+        : (frame, null);
 
     onNewFrame.notifyListeners((listener) => listener(analysedFrame));
     return (analysedFrame, extraAnalyses);

@@ -401,7 +401,7 @@ class _WebcamDualCharucosManagementContainerState
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Status: ${_device.isConnected ? 'Connected' : 'Not Connected'} and ${_device.isReading ? 'Reading' : 'Not Reading'}',
+                  'Status: ${_device.isConnected ? 'Connected' : 'Not Connected'} and ${_device.isRecording ? 'Recording' : 'Not Recording'}',
                 ),
                 if (_statusMessage != null) Text(_statusMessage!),
                 if (_errorMessage != null)
@@ -479,7 +479,6 @@ class _WebcamDualCharucosManagementContainerState
         fps: _selectedFPS,
         hideVideo: _hideVideo,
       );
-      await _device.startReading();
       _statusMessage = 'Connected to the Charucos feed: ${_device.name}';
     } on DeviceCouldNotConnect catch (e) {
       _statusMessage = 'Connection to the Charucos feed failed';
@@ -503,7 +502,12 @@ class _WebcamDualCharucosManagementContainerState
     });
 
     try {
-      await _device.stopReading();
+      await _device.stopRecording();
+    } on Exception {
+      // If stopping recording fails, we still want to try to disconnect, so we catch the error but don't rethrow it
+    }
+
+    try {
       await _device.disconnect();
       _statusMessage = 'Disconnected from the Charucos feed: ${_device.name}';
     } on DeviceCouldNotDisconnect catch (e) {
